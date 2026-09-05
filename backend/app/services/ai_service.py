@@ -1,39 +1,50 @@
 import os
+import json
+import google.generativeai as genai
+from dotenv import load_dotenv
 from app.schemas.patient import PatientIntake
 
+load_dotenv()
+
+api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+if api_key:
+    genai.configure(api_key=api_key)
+
 def analyze_patient_case(data: PatientIntake) -> dict:
-    """
-    Analyzes patient vitals and translated voice notes to generate 
-    an automated triage severity score and clinical summary.
-    """
-    vitals = data.vitals
-    notes = data.voice_note_text.lower()
+    if not api_key:
+        return {
+            "triage_priority": "Routine",
+            "clinical_flags": ["System Warning: API Key missing"],
+            "ai_recommendation": "Please configure AI integration."
+        }
     
-    risk_level = "Routine"
-    flags = []
+    prompt = f"""
+    You are an expert clinical AI assistant evaluating a patient intake from a rural health worker.
+    
+    Vitals: BP {data.vitals.bp}, Temp {data.vitals.temp} deg F, Pulse {data.vitals.pulse} bpm.
+    Patient Symptoms/Notes: "{data.voice_note_text}"
+    
+    Analyze the severity and return ONLY a valid JSON object matching this exact structure:
+    {{
+        "triage_priority": "High" or "Medium" or "Routine",
+        "clinical_flags": ["list", "of", "red flags"],
+        "ai_recommendation": "brief 2-sentence clinical recommendation for the urban doctor"
+    }}
+    """
     
     try:
-        temp_val = float(vitals.temp)
-        if temp_val > 102.0:
-            risk_level = "High"
-            flags.append("High Fever (>102°F)")
-        elif temp_val > 99.5:
-            if risk_level != "High":
-                risk_level = "Moderate"
-            flags.append("Low-grade Fever")
-    except ValueError:
-        pass
-
-    emergency_keywords = ["chest pain", "breathless", "bleeding", "unconscious", "stroke", "severe pain"]
-    for keyword in emergency_keywords:
-        if keyword in notes:
-            risk_level = "Critical"
-            flags.append(f"Critical keyword detected: '{keyword}'")
-
-    clinical_summary = {
-        "triage_priority": risk_level,
-        "clinical_flags": flags if flags else ["No immediate red flags detected"],
-        "ai_recommendation": f"Patient presents with vitals (BP: {vitals.bp}, Temp: {vitals.temp}°F, Pulse: {vitals.pulse} bpm). Symptoms logged: '{data.voice_note_text}'. Recommended review by general practitioner within {'2 hours' if risk_level in ['High', 'Critical'] else '24 hours'}."
-    }
     
-    return clinical_summary
+        model = genai.GenerativeModel("gemini-3.6-flash")
+        response = model.generate_content(prompt)
+        
+        raw_text = response.text.replace('```json', '').replace('```', '').strip()
+        return json.loads(raw_text)
+        
+    except Exception as e:
+        print(f"Gemini AI Error: {e}")
+        return {
+            "triage_priority": "Medium",
+            "clinical_flags": ["AI Analysis Failed"],
+            "ai_recommendation": f"Review patient data manually. (Error: {str(e)[:50]})"
+        }
