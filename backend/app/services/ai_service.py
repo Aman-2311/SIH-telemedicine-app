@@ -43,7 +43,7 @@ def analyze_patient_case(data: PatientIntake) -> dict:
     
     try:
     
-        model = genai.GenerativeModel("gemini-3.6-flash")
+        model = genai.GenerativeModel("gemini-3.6-flash", generation_config={"response_mime_type": "application/json"})
         response = model.generate_content(prompt)
         
         raw_text = response.text.replace('```json', '').replace('```', '').strip()

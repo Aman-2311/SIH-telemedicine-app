@@ -60,8 +60,10 @@ async def get_nearby_facilities(
     results = []
     
     for facility in MOCK_FACILITIES:
-        if facility_type and facility["type"].lower() != facility_type.lower():
-            continue
+        if facility_type:
+            cleaned_type = facility_type.strip("'").strip('"').strip().lower()
+            if facility["type"].lower() != cleaned_type:
+                continue
             
         dist = haversine(lat, lon, facility["lat"], facility["lon"])
         
