@@ -17,6 +17,7 @@ async def submit_patient_intake(data: PatientIntake):
             "triage_priority": ai_analysis["triage_priority"],
             "clinical_flags": ai_analysis["clinical_flags"],
             "ai_recommendation": ai_analysis["ai_recommendation"],
+            "generic_medicines": ai_analysis.get("generic_medicines", []),
             "image_url": data.image_url  
         }
         

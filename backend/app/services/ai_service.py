@@ -16,7 +16,8 @@ def analyze_patient_case(data: PatientIntake) -> dict:
         return {
             "triage_priority": "Routine",
             "clinical_flags": ["System Warning: API Key missing"],
-            "ai_recommendation": "Please configure AI integration."
+            "ai_recommendation": "Please configure AI integration.",
+            "generic_medicines": []
         }
     
     prompt = f"""
@@ -29,7 +30,14 @@ def analyze_patient_case(data: PatientIntake) -> dict:
     {{
         "triage_priority": "High" or "Medium" or "Routine",
         "clinical_flags": ["list", "of", "red flags"],
-        "ai_recommendation": "brief 2-sentence clinical recommendation for the urban doctor"
+        "ai_recommendation": "brief 2-sentence clinical recommendation for the urban doctor",
+        "generic_medicines": [
+            {{
+                "molecule": "Generic Salt Name (e.g., Paracetamol 500mg)",
+                "approx_cost_inr": 15,
+                "purpose": "Fever & pain management"
+            }}
+        ]
     }}
     """
     
@@ -46,5 +54,6 @@ def analyze_patient_case(data: PatientIntake) -> dict:
         return {
             "triage_priority": "Medium",
             "clinical_flags": ["AI Analysis Failed"],
-            "ai_recommendation": f"Review patient data manually. (Error: {str(e)[:50]})"
+            "ai_recommendation": f"Review patient data manually. (Error: {str(e)[:50]})",
+            "generic_medicines": []
         }
