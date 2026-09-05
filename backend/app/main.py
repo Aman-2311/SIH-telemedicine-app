@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import intake  
+from app.api import intake, queue  
 
 app = FastAPI(
     title="SIH Telemedicine Hub API",
@@ -16,8 +16,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 app.include_router(intake.router, prefix="/api", tags=["Patient Intake"])
+app.include_router(queue.router, prefix="/api", tags=["Doctor Dashboard"])
 
 @app.get("/")
 async def root():
