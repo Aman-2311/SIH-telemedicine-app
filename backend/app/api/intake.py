@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.schemas.patient import PatientIntake
 from app.services.ai_service import analyze_patient_case
-from app.core.database import supabase  
+from app.core.database import supabase
 
 router = APIRouter()
 
@@ -16,8 +16,10 @@ async def submit_patient_intake(data: PatientIntake):
             "voice_note_text": data.voice_note_text,
             "triage_priority": ai_analysis["triage_priority"],
             "clinical_flags": ai_analysis["clinical_flags"],
-            "ai_recommendation": ai_analysis["ai_recommendation"]
+            "ai_recommendation": ai_analysis["ai_recommendation"],
+            "image_url": data.image_url  
         }
+        
         
         response = supabase.table("patient_intakes").insert(record).execute()
 
