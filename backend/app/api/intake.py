@@ -1,10 +1,17 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from app.schemas.patient import PatientIntake
-from app.services.ai_service import analyze_patient_case
+from app.services.ai_service import analyze_patient_case, extract_form_data_from_voice
 from app.core.database import supabase
 
 router = APIRouter()
 
+# --- NEW SCHEMA FOR VOICE INPUT ---
+class VoiceInput(BaseModel):
+    spoken_text: str
+
+
+# --- 1. EXISTING INTAKE ENDPOINT ---
 @router.post("/intake")
 async def submit_patient_intake(data: PatientIntake):
     try:
@@ -21,7 +28,6 @@ async def submit_patient_intake(data: PatientIntake):
             "image_url": data.image_url  
         }
         
-        
         response = supabase.table("patient_intakes").insert(record).execute()
 
         return {
@@ -32,5 +38,24 @@ async def submit_patient_intake(data: PatientIntake):
             }
         }
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- 2. NEW VOICE-TO-FORM NLP ENDPOINT ---
+@router.post("/extract-voice")
+async def extract_voice_to_form(request: VoiceInput):
+    """
+    Takes raw transcribed text (Hindi/Marathi/English) and uses Gemini NLP 
+    to auto-fill the frontend triage form.
+    """
+    try:
+        extracted_data = extract_form_data_from_voice(request.spoken_text)
+        
+        return {
+            "status": "success",
+            "message": "Voice data successfully parsed into clinical format",
+            "data": extracted_data
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
