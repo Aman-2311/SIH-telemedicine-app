@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Home, Users, AlertCircle, Calendar, Settings, Mic, Activity, Search } from 'lucide-react';
+import { Home, Users, AlertCircle, Calendar, Settings, Mic, Activity, Search, WifiOff, Wifi } from 'lucide-react';
+import useIntakeStore from '../../store/useIntakeStore';
 
 export default function AshaDashboard() {
     const [isRecording, setIsRecording] = useState(false);
+    const { isOffline, submitIntake } = useIntakeStore();
 
     return (
         <div className="flex h-screen bg-slate-50 font-sans">
@@ -39,9 +41,20 @@ export default function AshaDashboard() {
                         <h1 className="text-2xl font-bold text-slate-800">Good Morning, Anjali 👋</h1>
                         <p className="text-slate-500">Here is what needs your attention today.</p>
                     </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-3 text-slate-400" size={18} />
-                        <input type="text" placeholder="Search ABHA ID or Name..." className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full w-64 focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <div className="flex items-center gap-4">
+                        {isOffline ? (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-100 text-red-700 rounded-full font-medium text-sm">
+                                <WifiOff size={16} /> Offline Mode - Data Saved Locally
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full font-medium text-sm">
+                                <Wifi size={16} /> Online
+                            </div>
+                        )}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+                            <input type="text" placeholder="Search ABHA ID or Name..." className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full w-64 focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
                     </div>
                 </header>
 
@@ -114,6 +127,13 @@ export default function AshaDashboard() {
                             <p className="mt-6 font-medium text-blue-300">
                                 {isRecording ? "Recording... (Listening for symptoms)" : "Tap to Speak"}
                             </p>
+                            
+                            <button 
+                                onClick={() => submitIntake()} 
+                                className="mt-6 w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition shadow-md"
+                            >
+                                Submit Patient Vitals (Test)
+                            </button>
                         </div>
 
                     </div>
