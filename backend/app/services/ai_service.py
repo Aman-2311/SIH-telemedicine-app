@@ -57,3 +57,43 @@ def analyze_patient_case(data: PatientIntake) -> dict:
             "ai_recommendation": f"Review patient data manually. (Error: {str(e)[:50]})",
             "generic_medicines": []
         }
+
+def extract_form_data_from_voice(spoken_text: str) -> dict:
+    if not api_key:
+        return {"error": "API key missing"}
+
+    prompt = f"""
+    You are a medical NLP data extractor. A rural patient or ASHA worker has dictated the following case notes via voice-to-text. 
+    The text may be in Hindi, Marathi, Hinglish, or English.
+
+    Raw Spoken Text: "{spoken_text}"
+
+    Your task:
+    1. Translate the meaning to English.
+    2. Extract any mentioned vitals (Blood Pressure, Temperature, Pulse).
+    3. Summarize the chief complaint/symptoms.
+    
+    If a vital is NOT mentioned, leave its value as an empty string "".
+
+    Return strictly a JSON object matching this exact format:
+    {{
+        "translated_symptoms": "English summary of symptoms",
+        "extracted_vitals": {{
+            "bp": "extracted BP or empty string",
+            "temp": "extracted temp or empty string",
+            "pulse": "extracted pulse or empty string"
+        }}
+    }}
+    """
+    
+    try:
+        model = genai.GenerativeModel("models/gemini-2.5-flash")
+        response = model.generate_content(prompt)
+        raw_text = response.text.replace("```json", "").replace("```", "").strip()
+        return json.loads(raw_text)
+    except Exception as e:
+        print(f"NLP Extraction Error: {e}")
+        return {
+            "translated_symptoms": spoken_text,
+            "extracted_vitals": {"bp": "", "temp": "", "pulse": ""}
+        }
