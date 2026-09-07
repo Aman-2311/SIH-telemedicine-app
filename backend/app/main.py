@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import intake, queue, upload, facilities
 from app.api import intake, queue, upload, facilities, auth
 
 app = FastAPI(
@@ -11,18 +10,26 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(intake.router, prefix="/api", tags=["Patient Intake"])
-app.include_router(queue.router, prefix="/api", tags=["Doctor Dashboard"])
-app.include_router(upload.router, prefix="/api", tags=["Media Storage"])
-app.include_router(facilities.router, prefix="/api/facilities", tags=["Facilities & Geolocation"])
+# Core API Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(intake.router, prefix="/api/intake", tags=["Patient Intake"])
+app.include_router(intake.router, prefix="/api", tags=["Patient Intake Alias"])
+app.include_router(queue.router, prefix="/api/queue", tags=["Doctor Dashboard"])
+app.include_router(facilities.router, prefix="/api/facilities", tags=["Facilities & Geolocation"])
+app.include_router(upload.router, prefix="/api", tags=["Media Storage"])
 
 @app.get("/")
-async def root():
-    return {"status": "success", "message": "Backend is running!"}
+@app.get("/health")
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "SIH Telemedicine Hub API",
+        "version": "1.0.0"
+    }

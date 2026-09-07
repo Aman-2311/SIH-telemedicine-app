@@ -8,6 +8,8 @@ class Vitals(BaseModel):
 
 class PatientIntake(BaseModel):
     abha_id: str
+    patient_name: Optional[str] = "Anonymous Patient"
     voice_note_text: str
+    translated_symptoms: Optional[str] = None
     vitals: Vitals
     image_url: Optional[str] = None 
