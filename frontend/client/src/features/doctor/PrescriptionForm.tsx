@@ -271,27 +271,27 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
   };
 
   return (
-    <div className="clinical-card p-6 space-y-4 text-slate-900">
+    <div className="clinical-card p-6 sm:p-7 space-y-5 text-slate-900">
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-slate-100 pb-3.5 mb-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shrink-0">
+      <div className="flex items-start justify-between border-b border-slate-100 pb-4 mb-1">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shrink-0">
             <Pill className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">E-Prescription</span>
-              <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-extrabold text-blue-700 uppercase tracking-wider">E-Prescription</span>
+              <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
                 Case #{caseId}
               </span>
             </div>
-            <h3 className="text-base font-extrabold text-slate-900 mt-0.5">
+            <h3 className="text-lg font-black text-slate-900 mt-1 tracking-tight">
               Prescribe for {patientName}
             </h3>
           </div>
         </div>
         <div className="text-right">
-          <span className="text-xs font-mono font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 block">
+          <span className="text-xs font-mono font-bold text-slate-700 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 block">
             {user?.abha_id || "DOCTOR-MH-7313"}
           </span>
           {draftSaved && (
@@ -303,20 +303,20 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
       </div>
 
       {error && (
-        <div className="p-3 text-xs font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div className="p-3.5 text-sm font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5">
+          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* Diagnosis Field */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Diagnosis <span className="text-rose-500">*</span>
+              Clinical Diagnosis <span className="text-rose-500">*</span>
             </label>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-slate-400 font-mono font-medium">
               {diagnosis.length}/500
             </span>
           </div>
@@ -327,45 +327,45 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
             value={diagnosis}
             onChange={(e) => setDiagnosis(e.target.value)}
             placeholder="e.g. Viral fever with dehydration / Acute Bronchitis"
-            className="w-full h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-xs"
+            className="w-full h-12 bg-white border border-slate-300 rounded-xl px-4 text-base font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-xs"
           />
         </div>
 
         {/* Medicines Section */}
         <div>
-          <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center mb-2.5">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Medicines & Generic Alternatives
             </label>
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-              Jan Aushadhi Generics
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+              Jan Aushadhi Generics Attached
             </span>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {medicines.map((med, idx) => (
               <div
                 key={idx}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2"
+                className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5"
               >
-                <div className="flex gap-2 items-center flex-wrap sm:flex-nowrap">
+                <div className="flex gap-2.5 items-center flex-wrap sm:flex-nowrap">
                   <input
                     type="text"
-                    className="flex-1 min-w-[140px] h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
+                    className="flex-1 min-w-[160px] h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-sm text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
                     placeholder="Medicine (e.g. Paracetamol, Dolo)"
                     value={med.name}
                     onChange={(e) => updateMedicine(idx, "name", e.target.value)}
                   />
                   <input
                     type="text"
-                    className="w-24 h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
+                    className="w-28 h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-sm text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
                     placeholder="Dosage"
                     value={med.dosage}
                     onChange={(e) => updateMedicine(idx, "dosage", e.target.value)}
                   />
                   <input
                     type="text"
-                    className="w-24 h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
+                    className="w-28 h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-sm text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
                     placeholder="Duration"
                     value={med.duration}
                     onChange={(e) => updateMedicine(idx, "duration", e.target.value)}
@@ -374,7 +374,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
                     <button
                       type="button"
                       onClick={() => removeMedicine(idx)}
-                      className="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                      className="text-slate-400 hover:text-rose-600 p-2.5 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer"
                       title="Remove medicine"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -384,18 +384,18 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
 
                 {/* DYNAMIC GENERIC SUGGESTION BANNER */}
                 {activeGenericSuggestion?.index === idx && (
-                  <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-1">
-                    <div className="flex items-start gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                  <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-sm flex items-center justify-between gap-3.5 shadow-xs animate-in slide-in-from-top-1">
+                    <div className="flex items-start gap-2.5">
+                      <Sparkles className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-bold text-emerald-950 text-xs">
+                        <div className="font-bold text-emerald-950 text-sm">
                           Generic Alternative:{" "}
                           <span className="text-blue-900 underline font-bold">
                             {activeGenericSuggestion.match.genericName}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-700 mt-0.5">
-                          PMBJP: <span className="font-bold text-emerald-800">{activeGenericSuggestion.match.genericPrice}</span> (vs Brand {activeGenericSuggestion.match.brandPrice}) •{" "}
+                        <div className="text-xs text-slate-700 mt-1 font-medium">
+                          PMBJP Price: <span className="font-bold text-emerald-800">{activeGenericSuggestion.match.genericPrice}</span> (vs Brand {activeGenericSuggestion.match.brandPrice}) •{" "}
                           <span className="font-bold text-emerald-700">Saves {activeGenericSuggestion.match.savings}</span>
                         </div>
                       </div>
@@ -406,7 +406,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
                       onClick={() =>
                         applyGeneric(idx, activeGenericSuggestion.match)
                       }
-                      className="btn-clinical-primary !h-8 !px-3 text-xs !bg-emerald-700 hover:!bg-emerald-800 shrink-0"
+                      className="btn-clinical-primary !h-9 !px-4 text-xs font-bold !bg-emerald-700 hover:!bg-emerald-800 shrink-0 rounded-xl"
                     >
                       <span>Use Generic</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -415,7 +415,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
                 )}
 
                 {med.generic_alternative && (
-                  <div className="text-xs text-emerald-800 font-bold bg-emerald-100/70 border border-emerald-200 px-2.5 py-1 rounded-md">
+                  <div className="text-xs text-emerald-800 font-bold bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-lg">
                     ✓ {med.generic_alternative}
                   </div>
                 )}
@@ -426,7 +426,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
           <button
             type="button"
             onClick={addMedicine}
-            className="btn-clinical-outline !h-10 text-xs font-bold mt-2.5 inline-flex items-center gap-1.5"
+            className="btn-clinical-outline !h-11 text-sm font-bold mt-3 inline-flex items-center gap-2 rounded-xl"
           >
             <Plus className="w-4 h-4 text-blue-700" />
             <span>Add Medicine</span>
@@ -435,11 +435,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
 
         {/* Doctor Advice Notes */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            Advice & ASHA Follow-up Instructions
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            Clinical Advice & Follow-up Instructions for ASHA Worker
           </label>
           <textarea
-            className="w-full bg-white border border-slate-300 rounded-xl p-3.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-xs"
+            className="w-full bg-white border border-slate-300 rounded-xl p-4 text-base font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-xs"
             rows={3}
             placeholder="e.g. Ensure oral rehydration solution. Re-check temperature if pyrexia persists."
             value={notes}
@@ -452,14 +452,14 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="btn-clinical-outline flex-1 justify-center !h-12 text-sm font-bold"
+            className="btn-clinical-outline flex-1 justify-center !h-12 text-sm font-bold rounded-xl"
           >
             Save Draft
           </button>
           <button
             type="submit"
             disabled={isSubmittingPrescription || !diagnosis.trim()}
-            className="btn-clinical-primary flex-2 justify-center !h-12 text-sm font-bold shadow-md shadow-blue-500/20"
+            className="btn-clinical-primary flex-2 justify-center !h-12 text-base font-bold shadow-md shadow-blue-500/20 rounded-xl"
           >
             {isSubmittingPrescription ? (
               <span>Signing Prescription...</span>

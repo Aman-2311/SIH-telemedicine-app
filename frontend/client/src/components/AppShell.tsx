@@ -454,26 +454,6 @@ export const AppShell: React.FC<AppShellProps> = ({
 
             <div style={{ flex: 1, minHeight: 16 }} />
 
-            {/* Quick Switch to Doctor Hub */}
-            <button
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors mb-2 cursor-pointer"
-              onClick={() => {
-                localStorage.setItem(
-                  "sahara_user",
-                  JSON.stringify({
-                    abha_id: "DOCTOR-MH-7313",
-                    role: "doctor",
-                    full_name: "Dr. Arvind Kulkarni (MD)",
-                  })
-                );
-                localStorage.setItem("sahara_access_token", "mock_doctor_jwt_token_7313");
-                window.location.reload();
-              }}
-            >
-              <Stethoscope className="w-3.5 h-3.5" />
-              <span>Switch to Doctor Workstation</span>
-            </button>
-
             {/* Sign Out Button */}
             <button className="sidebar-logout-btn" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
@@ -502,47 +482,47 @@ export const AppShell: React.FC<AppShellProps> = ({
             </div>
 
             <div className="sahara-modal-body">
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px", display: "flex", gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#dbeafe", color: "#1d4ed8", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                    <ClipboardList className="w-4 h-4" />
+              <div className="flex flex-col gap-3.5">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3.5 items-start">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <ClipboardList className="w-5 h-5" />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ fontSize: "0.86rem", color: "#0f172a" }}>Dr. Vikram Patil (Specialist Hub)</strong>
-                      <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>15m ago</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <strong className="text-sm font-bold text-slate-900">Dr. Vikram Patil (Specialist Hub)</strong>
+                      <span className="text-xs text-slate-400 font-medium">15m ago</span>
                     </div>
-                    <p style={{ fontSize: "0.78rem", color: "#475569", margin: 0, lineHeight: 1.4 }}>
-                      Reviewed clinical case for <strong>Aman Sharma</strong>. Electronic prescription issued with Jan Aushadhi generic alternatives (Paracetamol 500mg, Amoxicillin).
+                    <p className="text-sm text-slate-600 leading-relaxed m-0">
+                      Reviewed clinical case for <strong className="text-slate-900 font-semibold">Aman Sharma</strong>. Electronic prescription issued with Jan Aushadhi generic alternatives (Paracetamol 500mg, Amoxicillin).
                     </p>
                   </div>
                 </div>
 
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "12px 14px", display: "flex", gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#dcfce7", color: "#15803d", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                    <CheckCircle2 className="w-4 h-4" />
+                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 flex gap-3.5 items-start">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ fontSize: "0.86rem", color: "#166534" }}>PMBJP Jan Aushadhi Kendra #2041</strong>
-                      <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>1h ago</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <strong className="text-sm font-bold text-emerald-900">PMBJP Jan Aushadhi Kendra #2041</strong>
+                      <span className="text-xs text-emerald-700 font-medium">1h ago</span>
                     </div>
-                    <p style={{ fontSize: "0.78rem", color: "#15803d", margin: 0, lineHeight: 1.4 }}>
+                    <p className="text-sm text-emerald-800 leading-relaxed m-0">
                       Essential antibiotic and fever medicines stock refreshed with guaranteed 80%+ discount comparison available on radar.
                     </p>
                   </div>
                 </div>
 
-                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px", display: "flex", gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#fef3c7", color: "#b45309", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                    <RefreshCw className="w-4 h-4" />
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3.5 items-start">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <RefreshCw className="w-5 h-5" />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <strong style={{ fontSize: "0.86rem", color: "#0f172a" }}>Dexie.js Offline Store Auto-Sync</strong>
-                      <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>3h ago</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <strong className="text-sm font-bold text-slate-900">Dexie.js Offline Store Auto-Sync</strong>
+                      <span className="text-xs text-slate-400 font-medium">3h ago</span>
                     </div>
-                    <p style={{ fontSize: "0.78rem", color: "#475569", margin: 0, lineHeight: 1.4 }}>
+                    <p className="text-sm text-slate-600 leading-relaxed m-0">
                       Background daemon completed synchronization of 2 patient intake records. All records cryptographically verified.
                     </p>
                   </div>
@@ -577,34 +557,34 @@ export const AppShell: React.FC<AppShellProps> = ({
             </div>
 
             <div className="sahara-modal-body">
-              <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                  <span style={{ color: "#64748b" }}>Platform Version:</span>
-                  <strong style={{ color: "#0f172a" }}>v2.4.0 (SIH 2024 Production)</strong>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500 font-medium">Platform Version:</span>
+                  <strong className="text-slate-900 font-bold">v2.4.0 (SIH 2024 Production)</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                  <span style={{ color: "#64748b" }}>Encrypted Local Vault:</span>
-                  <strong style={{ color: "#16a34a" }}>Dexie.js IndexedDB (Active)</strong>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500 font-medium">Encrypted Local Vault:</span>
+                  <strong className="text-emerald-700 font-bold">Dexie.js IndexedDB (Active)</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                  <span style={{ color: "#64748b" }}>AI Translation Model:</span>
-                  <strong style={{ color: "#7c3aed" }}>Gemini 3.6 Flash Multi-Lingual</strong>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500 font-medium">AI Translation Model:</span>
+                  <strong className="text-purple-700 font-bold">Gemini 3.6 Flash Multi-Lingual</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                  <span style={{ color: "#64748b" }}>Geospatial Calculation:</span>
-                  <strong style={{ color: "#0284c7" }}>Haversine GPS Dynamic Engine</strong>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500 font-medium">Geospatial Calculation:</span>
+                  <strong className="text-sky-700 font-bold">Haversine GPS Dynamic Engine</strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                  <span style={{ color: "#64748b" }}>Network Gateway:</span>
-                  <strong style={{ color: isOnline ? "#16a34a" : "#d97706" }}>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500 font-medium">Network Gateway:</span>
+                  <strong className={isOnline ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"}>
                     {isOnline ? "Online Central Dispatch" : "Offline Local Cache"}
                   </strong>
                 </div>
               </div>
 
               {updateStatus && (
-                <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#047857", padding: "10px 12px", borderRadius: 6, fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   <span>{updateStatus}</span>
                 </div>
               )}
@@ -612,20 +592,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 onClick={handleCheckUpdate}
                 disabled={checkingUpdate}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  background: "#0f172a",
-                  color: "white",
-                  padding: "10px",
-                  borderRadius: 6,
-                  fontSize: "0.84rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  border: "none",
-                }}
+                className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-3 px-4 rounded-xl text-sm font-bold cursor-pointer transition-colors shadow-sm disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${checkingUpdate ? "spin" : ""}`} />
                 <span>{checkingUpdate ? "Checking Central Server..." : "Check for Updates Now"}</span>
@@ -660,55 +627,55 @@ export const AppShell: React.FC<AppShellProps> = ({
 
             <div className="sahara-modal-body">
               {/* Emergency Numbers */}
-              <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#be123c", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-4">
+                <div className="text-xs font-bold text-rose-800 mb-2.5 uppercase tracking-wider">
                   Emergency Helpline Numbers (24/7 Toll-Free)
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: "0.82rem" }}>
-                  <div style={{ background: "white", padding: "6px 10px", borderRadius: 6, border: "1px solid #fda4af" }}>
-                    <span style={{ color: "#64748b", display: "block", fontSize: "0.7rem" }}>National Ambulance</span>
-                    <strong style={{ color: "#be123c", fontSize: "1rem" }}>108</strong>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="bg-white p-2.5 rounded-lg border border-rose-200 text-center">
+                    <span className="text-xs text-slate-500 block font-medium">National Ambulance</span>
+                    <strong className="text-rose-700 text-lg font-mono font-bold">108</strong>
                   </div>
-                  <div style={{ background: "white", padding: "6px 10px", borderRadius: 6, border: "1px solid #fda4af" }}>
-                    <span style={{ color: "#64748b", display: "block", fontSize: "0.7rem" }}>National Health Helpline</span>
-                    <strong style={{ color: "#0284c7", fontSize: "1rem" }}>104</strong>
+                  <div className="bg-white p-2.5 rounded-lg border border-rose-200 text-center">
+                    <span className="text-xs text-slate-500 block font-medium">National Health Helpline</span>
+                    <strong className="text-sky-700 text-lg font-mono font-bold">104</strong>
                   </div>
-                  <div style={{ background: "white", padding: "6px 10px", borderRadius: 6, border: "1px solid #fda4af" }}>
-                    <span style={{ color: "#64748b", display: "block", fontSize: "0.7rem" }}>Women & Child Helpline</span>
-                    <strong style={{ color: "#7c3aed", fontSize: "1rem" }}>181</strong>
+                  <div className="bg-white p-2.5 rounded-lg border border-rose-200 text-center">
+                    <span className="text-xs text-slate-500 block font-medium">Women & Child Helpline</span>
+                    <strong className="text-purple-700 text-lg font-mono font-bold">181</strong>
                   </div>
-                  <div style={{ background: "white", padding: "6px 10px", borderRadius: 6, border: "1px solid #fda4af" }}>
-                    <span style={{ color: "#64748b", display: "block", fontSize: "0.7rem" }}>Emergency General</span>
-                    <strong style={{ color: "#0f172a", fontSize: "1rem" }}>112</strong>
+                  <div className="bg-white p-2.5 rounded-lg border border-rose-200 text-center">
+                    <span className="text-xs text-slate-500 block font-medium">Emergency General</span>
+                    <strong className="text-slate-900 text-lg font-mono font-bold">112</strong>
                   </div>
                 </div>
               </div>
 
               {/* Protocol FAQs */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
-                  <strong style={{ fontSize: "0.82rem", color: "#0f172a", display: "block", marginBottom: 3 }}>
+              <div className="flex flex-col gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                  <strong className="text-sm font-bold text-slate-900 block mb-1">
                     How to record intakes when internet is down?
                   </strong>
-                  <p style={{ fontSize: "0.76rem", color: "#475569", margin: 0, lineHeight: 1.4 }}>
+                  <p className="text-sm text-slate-600 leading-relaxed m-0 font-medium">
                     Your tablet uses local Dexie.js offline storage. Intakes and voice transcriptions save automatically. Once connectivity is detected, they auto-sync to the urban specialist queue.
                   </p>
                 </div>
 
-                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
-                  <strong style={{ fontSize: "0.82rem", color: "#0f172a", display: "block", marginBottom: 3 }}>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                  <strong className="text-sm font-bold text-slate-900 block mb-1">
                     How does Gemini NLP translate Hindi/Marathi?
                   </strong>
-                  <p style={{ fontSize: "0.76rem", color: "#475569", margin: 0, lineHeight: 1.4 }}>
+                  <p className="text-sm text-slate-600 leading-relaxed m-0 font-medium">
                     Select the Hindi or Marathi speech language tag. Click &quot;Speak Here&quot; and narrate symptoms naturally. Gemini 3.6 Flash translates the dialect into clinical English and extracts vitals.
                   </p>
                 </div>
 
-                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
-                  <strong style={{ fontSize: "0.82rem", color: "#0f172a", display: "block", marginBottom: 3 }}>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                  <strong className="text-sm font-bold text-slate-900 block mb-1">
                     Jan Aushadhi Generic Medicine Savings
                   </strong>
-                  <p style={{ fontSize: "0.76rem", color: "#475569", margin: 0, lineHeight: 1.4 }}>
+                  <p className="text-sm text-slate-600 leading-relaxed m-0 font-medium">
                     Check the Referral Map tab to guide patients to the nearest Jan Aushadhi Kendra, saving up to 80% on brand-name medicine costs.
                   </p>
                 </div>
@@ -742,40 +709,44 @@ export const AppShell: React.FC<AppShellProps> = ({
             </div>
 
             <div className="sahara-modal-body">
-              <div style={{ textAlign: "center", padding: "10px 0" }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--teal)", color: "white", display: "grid", placeItems: "center", margin: "0 auto 10px" }}>
-                  <HeartPulse className="w-6 h-6" />
+              <div className="text-center py-2">
+                <div className="w-14 h-14 rounded-2xl bg-teal-600 text-white flex items-center justify-center mx-auto mb-3 shadow-sm">
+                  <HeartPulse className="w-7 h-7" />
                 </div>
-                <h4 style={{ fontSize: "1.1rem", fontWeight: 800, margin: 0, color: "#0f172a" }}>
+                <h4 className="text-lg font-extrabold text-slate-900 m-0">
                   SAHARA Health Bridge
                 </h4>
-                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "4px 0 0" }}>
+                <p className="text-sm text-slate-500 mt-1 font-medium">
                   Dual-Interface Asynchronous Telemedicine for Rural Bharat
                 </p>
-                <span style={{ display: "inline-block", marginTop: 6, fontSize: "0.68rem", fontWeight: 800, padding: "2px 8px", borderRadius: 99, background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }}>
+                <span className="inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                   Smart India Hackathon 2024 Finalist
                 </span>
               </div>
 
-              <div style={{ fontSize: "0.8rem", color: "#334155", lineHeight: 1.5, background: "#f8fafc", padding: "12px 14px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                <strong>The Rural Healthcare Challenge:</strong>
-                <p style={{ margin: "4px 0 10px" }}>
-                  In underdeveloped villages, real-time video telemedicine fails because internet drops constantly. Specialist doctors are miles away in city hospitals.
-                </p>
-                <strong>Our Solution:</strong>
-                <p style={{ margin: "4px 0 0" }}>
-                  SAHARA is a 100% offline-first, store-and-forward telemedicine bridge. ASHA workers record voice intakes in regional languages (Hindi/Marathi), Gemini 3.6 Flash translates them into clinical summaries, urban doctors review cases asynchronously, and patients are referred to affordable generic pharmacies.
-                </p>
+              <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div>
+                  <strong className="text-slate-900">The Rural Healthcare Challenge:</strong>
+                  <p className="text-slate-600 mt-1">
+                    In underdeveloped villages, real-time video telemedicine fails because internet drops constantly. Specialist doctors are miles away in city hospitals.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-slate-200">
+                  <strong className="text-slate-900">Our Solution:</strong>
+                  <p className="text-slate-600 mt-1">
+                    SAHARA is a 100% offline-first, store-and-forward telemedicine bridge. ASHA workers record voice intakes in regional languages (Hindi/Marathi), Gemini 3.6 Flash translates them into clinical summaries, urban doctors review cases asynchronously, and patients are referred to affordable generic pharmacies.
+                  </p>
+                </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: "0.74rem" }}>
-                <div style={{ background: "#f1f5f9", padding: "8px 10px", borderRadius: 6 }}>
-                  <strong style={{ color: "#0f172a", display: "block" }}>ABDM Compliant</strong>
-                  <span style={{ color: "#64748b" }}>Full ABHA ID & HL7 integration</span>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-slate-100/80 p-3 rounded-xl border border-slate-200">
+                  <strong className="text-slate-900 text-sm block">ABDM Compliant</strong>
+                  <span className="text-slate-500 font-medium">Full ABHA ID & HL7 integration</span>
                 </div>
-                <div style={{ background: "#f1f5f9", padding: "8px 10px", borderRadius: 6 }}>
-                  <strong style={{ color: "#0f172a", display: "block" }}>Generic Savings</strong>
-                  <span style={{ color: "#64748b" }}>PMBJP Jan Aushadhi 80% discount</span>
+                <div className="bg-slate-100/80 p-3 rounded-xl border border-slate-200">
+                  <strong className="text-slate-900 text-sm block">Generic Savings</strong>
+                  <span className="text-slate-500 font-medium">PMBJP Jan Aushadhi 80% discount</span>
                 </div>
               </div>
             </div>

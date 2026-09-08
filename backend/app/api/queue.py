@@ -49,10 +49,19 @@ async def get_patient_queue(current_user: dict = Depends(require_doctor)):
         formatted_data = []
 
     priority_map = {"urgent": 1, "high": 1, "moderate": 2, "medium": 2, "routine": 3, "low": 3}
-    sorted_data = sorted(
-        formatted_data,
-        key=lambda x: priority_map.get(str(x.get("triage_priority", "Routine")).lower(), 4)
-    )
+    today_prefix = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    def sort_key(x):
+        created_str = str(x.get("created_at") or "")
+        is_today = 0 if created_str.startswith(today_prefix) else 1
+        p_weight = priority_map.get(str(x.get("triage_priority", "Routine")).lower(), 4)
+        try:
+            ts = datetime.fromisoformat(created_str.replace("Z", "+00:00")).timestamp()
+        except Exception:
+            ts = 0.0
+        return (is_today, p_weight, -ts)
+
+    sorted_data = sorted(formatted_data, key=sort_key)
     return sorted_data
 
 

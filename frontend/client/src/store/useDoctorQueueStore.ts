@@ -11,6 +11,7 @@ interface DoctorQueueState {
   completedCases: QueueItem[];
   selectedCaseId: string | null;
   selectedCase: QueueItem | null;
+  isUserSelected: boolean;
   isLoadingQueue: boolean;
   isLoadingCompleted: boolean;
   isSubmittingPrescription: boolean;
@@ -18,6 +19,7 @@ interface DoctorQueueState {
   filterPriority: string;
   error: string | null;
   lastPrescribedResult: PrescriptionResponse | null;
+  lastSyncedAt: Date | null;
 
   // Actions
   fetchQueue: () => Promise<void>;
@@ -34,6 +36,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
   completedCases: [],
   selectedCaseId: null,
   selectedCase: null,
+  isUserSelected: false,
   isLoadingQueue: false,
   isLoadingCompleted: false,
   isSubmittingPrescription: false,
@@ -41,6 +44,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
   filterPriority: "all",
   error: null,
   lastPrescribedResult: null,
+  lastSyncedAt: null,
 
   fetchQueue: async () => {
     set({ isLoadingQueue: true, error: null });
@@ -48,7 +52,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
       const response = await api.get<QueueItem[]>("/api/queue/");
       const items = Array.isArray(response.data) ? response.data : [];
 
-      // Sort with high triage priority first (Urgent / High -> Moderate / Medium -> Routine / Low)
+      // Sort with today's active cases first, high triage priority next, newest first within tier
       const priorityWeights: Record<string, number> = {
         urgent: 3,
         high: 3,
@@ -58,19 +62,30 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         low: 1,
       };
 
+      const todayPrefix = new Date().toISOString().split("T")[0];
       const sorted = [...items].sort((a, b) => {
-        const weightA =
-          priorityWeights[a.triage_priority?.toLowerCase()] || 0;
-        const weightB =
-          priorityWeights[b.triage_priority?.toLowerCase()] || 0;
-        return weightB - weightA;
+        const aToday = (a.created_at || "").startsWith(todayPrefix) ? 1 : 0;
+        const bToday = (b.created_at || "").startsWith(todayPrefix) ? 1 : 0;
+        if (bToday !== aToday) return bToday - aToday;
+
+        const weightA = priorityWeights[a.triage_priority?.toLowerCase() || ""] || 0;
+        const weightB = priorityWeights[b.triage_priority?.toLowerCase() || ""] || 0;
+        if (weightB !== weightA) return weightB - weightA;
+
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
 
       const currentSelected = get().selectedCaseId;
-      const updatedSelectedCase =
-        sorted.find((item) => (item.case_id || item.id) === currentSelected) ||
-        sorted[0] ||
-        null;
+      const isManual = get().isUserSelected;
+
+      const currentCaseObj = sorted.find((item) => (item.case_id || item.id) === currentSelected);
+      const isCurrentCaseToday = currentCaseObj && (currentCaseObj.created_at || "").startsWith(todayPrefix);
+      const isTopCaseToday = sorted[0] && (sorted[0].created_at || "").startsWith(todayPrefix);
+
+      let updatedSelectedCase = currentCaseObj;
+      if (!isManual || (!isCurrentCaseToday && isTopCaseToday) || !currentCaseObj) {
+        updatedSelectedCase = sorted[0] || null;
+      }
 
       set({
         queue: sorted,
@@ -78,6 +93,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         selectedCaseId: updatedSelectedCase
           ? updatedSelectedCase.case_id || updatedSelectedCase.id
           : null,
+        lastSyncedAt: new Date(),
         isLoadingQueue: false,
       });
     } catch (err: any) {
@@ -108,6 +124,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
     set({
       selectedCaseId: caseId,
       selectedCase: item,
+      isUserSelected: true,
     });
   },
 

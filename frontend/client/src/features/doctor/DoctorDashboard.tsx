@@ -97,16 +97,14 @@ export const CaseLifecycleStepper: React.FC<CaseLifecycleStepperProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-              currentStage >= 5
+            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${currentStage >= 5
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-blue-50 text-blue-700 border border-blue-200"
-            }`}
+              }`}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                currentStage >= 5 ? "bg-emerald-600" : "bg-blue-600 animate-pulse"
-              }`}
+              className={`w-1.5 h-1.5 rounded-full ${currentStage >= 5 ? "bg-emerald-600" : "bg-blue-600 animate-pulse"
+                }`}
             />
             {currentStage === 4 && "Stage 4: Active Doctor Teleconsultation"}
             {currentStage === 5 && "Stage 5: E-Prescription & Pharmacy Dispatch Active"}
@@ -129,25 +127,23 @@ export const CaseLifecycleStepper: React.FC<CaseLifecycleStepperProps> = ({
               {/* Connector line between steps */}
               {idx < LIFECYCLE_STEPS.length - 1 && (
                 <div
-                  className={`lifecycle-connector ${
-                    step.id < currentStage - 1
+                  className={`lifecycle-connector ${step.id < currentStage - 1
                       ? "lifecycle-connector--completed"
                       : step.id === currentStage - 1
-                      ? "lifecycle-connector--active"
-                      : "lifecycle-connector--upcoming"
-                  }`}
+                        ? "lifecycle-connector--active"
+                        : "lifecycle-connector--upcoming"
+                    }`}
                 />
               )}
 
               {/* Circle Node */}
               <div
-                className={`lifecycle-circle ${
-                  isDone
+                className={`lifecycle-circle ${isDone
                     ? "lifecycle-circle--completed"
                     : isActive
-                    ? "lifecycle-circle--active"
-                    : "lifecycle-circle--upcoming"
-                }`}
+                      ? "lifecycle-circle--active"
+                      : "lifecycle-circle--upcoming"
+                  }`}
               >
                 {isDone ? (
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -160,13 +156,12 @@ export const CaseLifecycleStepper: React.FC<CaseLifecycleStepperProps> = ({
 
               {/* Labels */}
               <div
-                className={`lifecycle-label ${
-                  isDone
+                className={`lifecycle-label ${isDone
                     ? "lifecycle-label--completed"
                     : isActive
-                    ? "lifecycle-label--active"
-                    : "lifecycle-label--upcoming"
-                }`}
+                      ? "lifecycle-label--active"
+                      : "lifecycle-label--upcoming"
+                  }`}
               >
                 {step.title}
               </div>
@@ -210,6 +205,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     selectCase,
     filterPriority,
     setFilterPriority,
+    lastSyncedAt,
   } = useDoctorQueueStore();
 
   // Navigation & Workspace State
@@ -295,10 +291,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       );
     }
 
-    // Sort order
+    // Sort order (Today's active cases prioritized, then priority tier, then newest first)
     if (sortBy === "priority") {
+      const todayPrefix = new Date().toISOString().split("T")[0];
       const pWeights: Record<string, number> = { urgent: 3, high: 3, moderate: 2, medium: 2, routine: 1, low: 1 };
-      list.sort((a, b) => (pWeights[b.triage_priority?.toLowerCase() || ""] || 0) - (pWeights[a.triage_priority?.toLowerCase() || ""] || 0));
+      list.sort((a, b) => {
+        const aToday = (a.created_at || "").startsWith(todayPrefix) ? 1 : 0;
+        const bToday = (b.created_at || "").startsWith(todayPrefix) ? 1 : 0;
+        if (bToday !== aToday) return bToday - aToday;
+
+        const weightA = pWeights[a.triage_priority?.toLowerCase() || ""] || 0;
+        const weightB = pWeights[b.triage_priority?.toLowerCase() || ""] || 0;
+        if (weightB !== weightA) return weightB - weightA;
+
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
     } else if (sortBy === "waiting") {
       list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     }
@@ -390,18 +397,18 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           </button>
 
           <div
-            className="flex items-center gap-2 cursor-pointer select-none"
+            className="flex items-center gap-2.5 cursor-pointer select-none"
             onClick={() => setActiveView("home")}
           >
-            <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center text-white shadow-sm">
               <HeartPulse className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-slate-900 text-sm tracking-tight">
+              <div className="flex items-center gap-2.5">
+                <span className="font-extrabold text-slate-900 text-base tracking-tight">
                   SAHARA
                 </span>
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                <span className="hidden md:inline text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
                   Doctor Teleconsultation Hub
                 </span>
               </div>
@@ -410,15 +417,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         </div>
 
         {/* Center: Global Search Bar */}
-        <div className="flex-1 max-w-lg mx-6 hidden sm:block">
+        <div className="flex-1 max-w-xl mx-8 min-w-0 hidden sm:block">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none flex-shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search patients, case ID, ABHA ID...  (Ctrl+K)"
-              className="w-full h-10 bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-blue-600 rounded-lg pl-10 pr-9 text-sm text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/15 transition-all"
+              placeholder="Search patients, case ID, ABHA ID…"
+              className="w-full h-10 bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-teal-600 rounded-lg pl-10 pr-9 text-sm text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/15 transition-all"
             />
             {searchQuery && (
               <button
@@ -435,16 +442,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         <div className="flex items-center gap-4">
           {/* Connection Pill */}
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
-              isOnline
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${isOnline
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-rose-50 text-rose-700 border border-rose-200"
-            }`}
+              }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
-                isOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
-              }`}
+              className={`w-2 h-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                }`}
             />
             <span>{isOnline ? "Online" : "Offline"}</span>
           </div>
@@ -466,7 +471,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             onClick={() => setActiveModal("help")}
             className="flex items-center gap-2.5 cursor-pointer pl-1"
           >
-            <div className="w-9 h-9 rounded-full bg-blue-900 text-white font-extrabold text-xs flex items-center justify-center border-2 border-white shadow-xs avatar-ring">
+            <div className="w-9 h-9 rounded-full bg-teal-800 text-white font-extrabold text-xs flex items-center justify-center border-2 border-white shadow-xs avatar-ring">
               DA
             </div>
             <div className="hidden lg:block text-left">
@@ -490,7 +495,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           <aside className="doctor-sidebar animate-in slide-in-from-left-2 duration-150">
             {/* Doctor Profile Card */}
             <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center gap-3 shadow-xs">
-              <div className="w-10 h-10 rounded-lg bg-blue-800 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-10 h-10 rounded-lg bg-teal-800 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs">
                 DA
               </div>
               <div className="min-w-0 flex-1">
@@ -606,25 +611,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   <span>Settings</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    localStorage.setItem(
-                      "sahara_user",
-                      JSON.stringify({
-                        abha_id: "TEST-ASHA-MH-0001",
-                        role: "asha",
-                        full_name: "Sunita Patil (TEST)",
-                        phone_number: "+91 90000 10001",
-                      })
-                    );
-                    localStorage.setItem("sahara_access_token", "mock_jwt_token_asha_999");
-                    window.location.reload();
-                  }}
-                  className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors cursor-pointer"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Switch to ASHA Field Tablet</span>
-                </button>
 
                 <button
                   onClick={() => {
@@ -649,21 +635,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           {activeView === "home" && (
             <div className="view-enter space-y-6">
               {/* Welcome Section */}
-              <div className="clinical-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 slide-up">
+              <div className="clinical-card flex flex-col sm:flex-row sm:items-center justify-between gap-5 slide-up">
                 <div>
-                  <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                    Good morning, Dr. Arvind 👋
+                  <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Good morning, Dr. Arvind
                   </h1>
-                  <p className="text-sm text-slate-600 font-medium mt-1 leading-relaxed">
-                    Here is your clinical workload and prioritized triage queue for today.
+                  <p className="text-base text-slate-500 font-medium mt-1.5 leading-relaxed">
+                    Your prioritized triage queue for today.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3.5 text-right">
-                  <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100 shrink-0">
-                    <Calendar className="w-5 h-5" />
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100 shrink-0">
+                    <Calendar className="w-6 h-6" />
                   </div>
-                  <div>
+                  <div className="text-right">
                     <div className="text-sm font-bold text-slate-800">
                       {currentTime.toLocaleDateString("en-IN", {
                         weekday: "long",
@@ -672,8 +658,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         year: "numeric",
                       })}
                     </div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">
-                      {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} • Last synced 2 min ago
+                    <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center justify-end gap-1.5">
+                      <span>{currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1 text-emerald-600 font-sans font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        {lastSyncedAt ? `Synced` : "Syncing…"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -793,26 +784,26 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Left 65%: Requires Your Attention */}
                 <div className="lg:col-span-8 space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                      <h2 className="text-base font-bold text-slate-900">
                         Requires Your Attention
                       </h2>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        High priority cases flagged by offline AI triage engine
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        High priority cases flagged by offline AI triage
                       </p>
                     </div>
                     <button
                       onClick={() => setActiveView("queue")}
-                      className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 cursor-pointer"
+                      className="text-sm font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer shrink-0"
                     >
-                      View All in Queue →
+                      View All →
                     </button>
                   </div>
 
                   {/* Priority Patient Cards - Spacious 2-Tier Layout */}
                   <div className="space-y-4">
-                    {allCases.slice(0, 3).map((item) => {
+                    {displayedQueue.slice(0, 4).map((item) => {
                       const isUrgent = ["urgent", "high"].includes(
                         (item.triage_priority || "").toLowerCase()
                       );
@@ -823,19 +814,17 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       return (
                         <div
                           key={item.case_id || item.id}
-                          className={`priority-clinical-card ${
-                            isUrgent ? "priority-card-urgent" : isModerate ? "priority-card-moderate" : ""
-                          }`}
+                          className={`priority-clinical-card ${isUrgent ? "priority-card-urgent" : isModerate ? "priority-card-moderate" : ""
+                            }`}
                         >
                           {/* TIER 1: Identification, Badge, and Action */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 pb-3.5 border-b border-slate-100">
                             <div className="flex items-center gap-3.5 min-w-0">
                               <div
-                                className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                                  isUrgent
+                                className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isUrgent
                                     ? "bg-rose-100 text-rose-800 ring-2 ring-rose-200"
                                     : "bg-amber-100 text-amber-800 ring-2 ring-amber-200"
-                                }`}
+                                  }`}
                               >
                                 {(item.patient_name || "P")[0]}
                                 {(item.patient_name || "P").split(" ")[1]?.[0] || ""}
@@ -843,28 +832,27 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2.5 flex-wrap">
-                                  <h3 className="text-base font-bold text-slate-900 truncate">
+                                  <h3 className="text-lg font-bold text-slate-900 truncate">
                                     {item.patient_name}
                                   </h3>
                                   <span
-                                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                                      isUrgent
+                                    className={`text-xs font-bold px-2.5 py-1 rounded-full ${isUrgent
                                         ? "bg-rose-100 text-rose-800 border border-rose-200"
                                         : "bg-amber-100 text-amber-800 border border-amber-200"
-                                    }`}
+                                      }`}
                                   >
                                     {item.triage_priority} Priority
                                   </span>
                                 </div>
 
-                                <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                                <div className="text-sm text-slate-500 mt-1 flex items-center gap-2 flex-wrap font-medium">
                                   <span>{item.age} yrs • {item.gender}</span>
                                   <span>•</span>
                                   <span className="font-mono text-slate-700 font-semibold">
                                     Case #{item.case_id || item.id}
                                   </span>
                                   <span>•</span>
-                                  <span className="text-slate-500">{formatWaitingMinutes(item.created_at)} ago</span>
+                                  <span className="text-slate-500">{formatWaitingMinutes(item.created_at)} waiting</span>
                                 </div>
                               </div>
                             </div>
@@ -946,41 +934,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* Right 35%: Department Workload, Quick Actions & System Status */}
+                {/* Right 35%: Quick Actions & System Status */}
                 <div className="lg:col-span-4 space-y-6">
-                  {/* Department Workload */}
-                  <div className="clinical-card p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                        Department Workload
-                      </h3>
-                      <span className="text-xs text-slate-400 font-mono">Today</span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {[
-                        { dept: "General Medicine", count: 14, percent: 80, color: "bg-blue-600" },
-                        { dept: "Dermatology", count: 6, percent: 45, color: "bg-teal-600" },
-                        { dept: "Pediatrics", count: 5, percent: 38, color: "bg-amber-500" },
-                        { dept: "Cardiology", count: 4, percent: 30, color: "bg-rose-500" },
-                        { dept: "Gynecology", count: 3, percent: 22, color: "bg-purple-500" },
-                        { dept: "Other", count: 4, percent: 25, color: "bg-slate-400" },
-                      ].map((d) => (
-                        <div key={d.dept} className="text-xs">
-                          <div className="flex justify-between font-semibold text-slate-700 mb-1.5">
-                            <span>{d.dept}</span>
-                            <span className="font-mono text-slate-900 font-bold">{d.count}</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div
-                              className={`${d.color} h-2 rounded-full transition-all duration-500`}
-                              style={{ width: `${d.percent}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
                   {/* Quick Actions */}
                   <div className="clinical-card p-5 space-y-3.5">
@@ -1083,21 +1038,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               VIEW 2: CLINICAL PATIENT QUEUE (Panel 2 from reference)
               ═════════════════════════════════════════════════════════════ */}
           {activeView === "queue" && (
-            <div className="view-enter space-y-4">
+            <div className="view-enter space-y-5">
               {/* Header & Controls */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs">
                 <div>
-                  <h1 className="text-lg font-black text-slate-900 tracking-tight">
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
                     Patient Queue
                   </h1>
-                  <p className="text-xs text-slate-500">
-                    Cases prioritized by offline AI triage.
+                  <p className="text-sm text-slate-500 font-medium mt-0.5">
+                    Cases prioritized by offline AI triage algorithm.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap">
                   {/* Filter Pills */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {[
                       { key: "all", label: `All (${allCases.length})`, activeClass: "bg-blue-700 text-white border-blue-700", baseClass: "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" },
                       { key: "urgent", label: `⚠️ Urgent (${urgentCount})`, activeClass: "bg-rose-600 text-white border-rose-600", baseClass: "bg-white text-rose-700 border-rose-200 hover:bg-rose-50" },
@@ -1107,11 +1062,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       <button
                         key={btn.key}
                         onClick={() => setFilterPriority(btn.key)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border shadow-xs transition-all cursor-pointer ${
-                          filterPriority === btn.key
+                        className={`px-3.5 py-2 rounded-xl text-sm font-bold border shadow-xs transition-all cursor-pointer ${filterPriority === btn.key
                             ? btn.activeClass
                             : btn.baseClass
-                        }`}
+                          }`}
                       >
                         {btn.label}
                       </button>
@@ -1122,7 +1076,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   <select
                     value={deptFilter}
                     onChange={(e) => setDeptFilter(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-bold focus:outline-none"
+                    className="h-10 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-sm text-slate-800 font-bold focus:outline-none"
                   >
                     <option>All Departments</option>
                     <option>General Medicine</option>
@@ -1135,10 +1089,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   {/* Refresh Button */}
                   <button
                     onClick={() => void fetchQueue()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 hover:bg-blue-100 text-xs font-bold border border-blue-200 transition-colors cursor-pointer"
+                    className="h-10 flex items-center gap-2 px-4 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 text-sm font-bold border border-blue-200 transition-colors cursor-pointer"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingQueue ? "spin" : ""}`} />
-                    <span>Refresh Queue</span>
+                    <RefreshCw className={`w-4 h-4 ${isLoadingQueue ? "spin" : ""}`} />
+                    <span>Refresh</span>
                   </button>
                 </div>
               </div>
@@ -1148,24 +1102,24 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                 <table className="clinical-table">
                   <thead>
                     <tr>
-                      <th style={{ width: "24%" }}>
+                      <th style={{ width: "26%" }}>
                         <button
                           onClick={() => setSortBy(sortBy === "priority" ? "waiting" : "priority")}
-                          className="flex items-center gap-1 uppercase tracking-wider font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                          className="flex items-center gap-1.5 uppercase tracking-wider font-bold text-slate-600 hover:text-slate-900 transition-colors text-xs"
                         >
                           <span>Patient</span>
-                          <ChevronDown className="w-3 h-3" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         </button>
                       </th>
-                      <th style={{ width: "34%" }}>Clinical Summary</th>
+                      <th style={{ width: "32%" }}>Clinical Summary</th>
                       <th style={{ width: "16%" }}>Vitals</th>
                       <th style={{ width: "14%" }}>
                         <button
                           onClick={() => setSortBy(sortBy === "priority" ? "waiting" : "priority")}
-                          className="flex items-center gap-1 uppercase tracking-wider font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                          className="flex items-center gap-1.5 uppercase tracking-wider font-bold text-slate-600 hover:text-slate-900 transition-colors text-xs"
                         >
                           <span>Status & Wait</span>
-                          <ChevronDown className={`w-3 h-3 ${sortBy === "priority" ? "text-blue-600" : ""}`} />
+                          <ChevronDown className={`w-3.5 h-3.5 ${sortBy === "priority" ? "text-blue-600" : ""}`} />
                         </button>
                       </th>
                       <th style={{ width: "12%", textAlign: "right" }}>Action</th>
@@ -1179,15 +1133,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                               <Search className="w-5 h-5" />
                             </div>
-                            <div className="text-xs font-bold text-slate-700">No matching patient cases found</div>
-                            <div className="text-[11px] text-slate-400">Try adjusting your filters or search query</div>
+                            <div className="text-sm font-bold text-slate-700">No matching patient cases found</div>
+                            <div className="text-xs text-slate-400">Try adjusting your filters or search query</div>
                             <button
                               onClick={() => {
                                 setFilterPriority("all");
                                 setDeptFilter("All Departments");
                                 setSearchQuery("");
                               }}
-                              className="mt-1 text-xs font-bold text-blue-700 hover:underline cursor-pointer"
+                              className="mt-1 text-sm font-bold text-blue-700 hover:underline cursor-pointer"
                             >
                               Reset All Filters
                             </button>
@@ -1199,103 +1153,101 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         const isUrgent = ["urgent", "high"].includes(
                           (item.triage_priority || "").toLowerCase()
                         );
-                      const isModerate = ["moderate", "medium"].includes(
-                        (item.triage_priority || "").toLowerCase()
-                      );
+                        const isModerate = ["moderate", "medium"].includes(
+                          (item.triage_priority || "").toLowerCase()
+                        );
 
-                      return (
-                        <tr key={item.case_id || item.id}>
-                          {/* Column 1: Patient Details */}
-                          <td>
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                  isUrgent
-                                    ? "bg-rose-100 text-rose-800"
+                        return (
+                          <tr key={item.case_id || item.id}>
+                            {/* Column 1: Patient Details */}
+                            <td>
+                              <div className="flex items-center gap-3.5">
+                                <div
+                                  className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-xs ${isUrgent
+                                      ? "bg-rose-100 text-rose-800"
+                                      : isModerate
+                                        ? "bg-amber-100 text-amber-800"
+                                        : "bg-blue-100 text-blue-800"
+                                    }`}
+                                >
+                                  {(item.patient_name || "P")[0]}
+                                  {(item.patient_name || "P").split(" ")[1]?.[0] || ""}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-900 text-base">
+                                    {item.patient_name}
+                                  </div>
+                                  <div className="text-xs text-slate-500 font-medium mt-0.5">
+                                    {item.age} yrs • {item.gender}
+                                  </div>
+                                  <div className="text-xs font-mono text-slate-400 mt-0.5">
+                                    Case #{item.case_id || item.id} • {formatWaitingMinutes(item.created_at)}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Column 2: Clinical Summary */}
+                            <td>
+                              <div className="text-sm text-slate-900 font-bold line-clamp-1">
+                                {item.department}
+                              </div>
+                              <div className="text-xs text-slate-600 line-clamp-2 mt-0.5 font-normal leading-relaxed">
+                                {item.translated_symptoms}
+                              </div>
+                              {item.ai_red_flags && item.ai_red_flags.length > 0 && (
+                                <div className="mt-1.5 flex items-center gap-1">
+                                  <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    AI: {item.ai_red_flags[0]}
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Column 3: Vitals */}
+                            <td>
+                              <div className="text-xs font-mono font-bold text-slate-900">
+                                BP: {item.vitals?.bp || "--"}
+                              </div>
+                              <div className="text-xs text-slate-600 font-mono mt-0.5">
+                                Temp: {item.vitals?.temp ? `${item.vitals.temp}°F` : "--"}
+                              </div>
+                              <div className="text-xs text-slate-600 font-mono mt-0.5">
+                                Pulse: {item.vitals?.pulse ? `${item.vitals.pulse} bpm` : "--"}
+                              </div>
+                            </td>
+
+                            {/* Column 4: Status */}
+                            <td>
+                              <span
+                                className={`inline-block text-xs font-extrabold px-2.5 py-1 rounded-md ${isUrgent
+                                    ? "bg-rose-100 text-rose-800 border border-rose-300"
                                     : isModerate
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-blue-100 text-blue-800"
-                                }`}
+                                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                      : "bg-blue-100 text-blue-800 border border-blue-300"
+                                  }`}
                               >
-                                {(item.patient_name || "P")[0]}
-                                {(item.patient_name || "P").split(" ")[1]?.[0] || ""}
+                                {item.triage_priority}
+                              </span>
+                              <div className="text-xs text-slate-400 font-mono mt-1 font-medium">
+                                ⏱ {formatWaitingMinutes(item.created_at)}
                               </div>
-                              <div>
-                                <div className="font-bold text-slate-900 text-xs">
-                                  {item.patient_name}
-                                </div>
-                                <div className="text-[11px] text-slate-500">
-                                  {item.age} yrs • {item.gender}
-                                </div>
-                                <div className="text-[10px] font-mono text-slate-400">
-                                  Case #{item.case_id || item.id} • {formatWaitingMinutes(item.created_at)}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Column 2: Clinical Summary */}
-                          <td>
-                            <div className="text-xs text-slate-800 font-semibold line-clamp-1">
-                              {item.department}
-                            </div>
-                            <div className="text-[11px] text-slate-600 line-clamp-1 mt-0.5">
-                              {item.translated_symptoms}
-                            </div>
-                            {item.ai_red_flags && item.ai_red_flags.length > 0 && (
-                              <div className="mt-1 flex items-center gap-1">
-                                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                  <AlertTriangle className="w-2.5 h-2.5" />
-                                  AI: {item.ai_red_flags[0]}
-                                </span>
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Column 3: Vitals */}
-                          <td>
-                            <div className="text-[11px] font-mono font-bold text-slate-800">
-                              BP: {item.vitals?.bp || "--"}
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-mono">
-                              Temp: {item.vitals?.temp ? `${item.vitals.temp}°F` : "--"}
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-mono">
-                              Pulse: {item.vitals?.pulse || "--"}
-                            </div>
-                          </td>
-
-                          {/* Column 4: Status */}
-                          <td>
-                            <span
-                              className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded ${
-                                isUrgent
-                                  ? "bg-rose-100 text-rose-800 border border-rose-300"
-                                  : isModerate
-                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
-                                  : "bg-blue-100 text-blue-800 border border-blue-300"
-                              }`}
-                            >
-                              {item.triage_priority}
-                            </span>
-                            <div className="text-[10px] text-slate-400 font-mono mt-1">
-                              ⏱ {formatWaitingMinutes(item.created_at)}
-                            </div>
-                          </td>
-
-                          {/* Column 5: Action */}
-                          <td style={{ textAlign: "right" }}>
-                            <button
-                              onClick={() => handleOpenPatient(item)}
-                              className="btn-clinical-primary text-xs !h-8 !px-3 inline-flex items-center gap-1.5 shrink-0"
-                            >
-                              <span>Review Case</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    }))}
+                            {/* Column 5: Action */}
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                onClick={() => handleOpenPatient(item)}
+                                className="btn-clinical-primary text-xs !h-9 !px-3.5 inline-flex items-center gap-1.5 shrink-0 rounded-xl font-bold"
+                              >
+                                <span>Review Case</span>
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }))}
                   </tbody>
                 </table>
 
@@ -1327,71 +1279,70 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               VIEW 3: PATIENT CLINICAL WORKSPACE (Panel 3 from reference)
               ═════════════════════════════════════════════════════════════ */}
           {activeView === "patient" && currentCase && (
-            <div className="view-enter space-y-4">
+            <div className="view-enter space-y-6">
               {/* Back to Queue & Header Action Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
                   <button
                     onClick={() => setActiveView("queue")}
-                    className="flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs cursor-pointer transition-colors"
+                    className="flex items-center gap-2 text-sm font-bold text-blue-700 hover:text-blue-900 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs cursor-pointer transition-colors"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <ArrowLeft className="w-4 h-4" />
                     <span>Back to Queue</span>
                   </button>
                   <div>
-                    <h1 className="text-base font-extrabold text-slate-900 leading-tight">
-                      Patient Details
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                      Patient Details & Teleconsultation
                     </h1>
-                    <p className="text-[11px] text-slate-500">
-                      Complete clinical information and prescription workspace.
+                    <p className="text-sm text-slate-500 font-medium mt-0.5">
+                      Complete clinical record, multimodal symptoms and e-prescription workspace.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <button
                     onClick={() => setMarkedFollowUp(!markedFollowUp)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                      markedFollowUp
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition-colors cursor-pointer ${markedFollowUp
                         ? "bg-amber-50 border-amber-300 text-amber-800"
                         : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
-                    <Bookmark className="w-3.5 h-3.5" />
+                    <Bookmark className="w-4 h-4" />
                     <span>{markedFollowUp ? "Marked for Follow-up" : "Mark for Follow-up"}</span>
                   </button>
 
                   <button
                     onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                   >
-                    <Printer className="w-3.5 h-3.5" />
+                    <Printer className="w-4 h-4" />
                     <span>Print Case</span>
                   </button>
                 </div>
               </div>
 
               {/* Patient Header Banner Card */}
-              <div className="clinical-card p-6 slide-up">
-                <div className="flex flex-wrap items-center justify-between gap-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-800 font-black text-lg flex items-center justify-center border-2 border-blue-200 shrink-0 shadow-xs">
+              <div className="clinical-card p-6 sm:p-7 slide-up">
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-800 font-black text-xl flex items-center justify-center border-2 border-blue-200 shrink-0 shadow-xs">
                       {(currentCase.patient_name || "P")[0]}
                       {(currentCase.patient_name || "P").split(" ")[1]?.[0] || ""}
                     </div>
                     <div>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                      <div className="flex items-center gap-3.5 flex-wrap">
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                           {currentCase.patient_name}
                         </h2>
-                        <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                        <span className="text-sm font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg">
                           Case #{currentCase.case_id || currentCase.id}
                         </span>
                       </div>
-                      <div className="text-sm text-slate-600 mt-1 font-medium flex items-center gap-2 flex-wrap">
-                        <span>{currentCase.age} yrs • {currentCase.gender}</span>
+                      <div className="text-sm text-slate-600 mt-1.5 font-medium flex items-center gap-2.5 flex-wrap">
+                        <span className="font-semibold text-slate-700">{currentCase.age} yrs • {currentCase.gender}</span>
                         <span>•</span>
-                        <span className="font-bold text-slate-800 bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded text-xs">
+                        <span className="font-bold text-slate-800 bg-blue-50 text-blue-800 border border-blue-200 px-3 py-0.5 rounded-md text-xs">
                           {currentCase.department}
                         </span>
                       </div>
@@ -1399,36 +1350,35 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   </div>
 
                   <div className="flex items-center gap-4 flex-wrap">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-center min-w-[110px]">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-center min-w-[125px]">
                       <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
                         ABHA ID
                       </div>
-                      <div className="text-sm font-mono font-extrabold text-slate-900 flex items-center justify-center gap-1.5 mt-0.5">
+                      <div className="text-base font-mono font-extrabold text-slate-900 flex items-center justify-center gap-1.5 mt-1">
                         <ShieldCheck className="w-4 h-4 text-teal-600" />
                         <span>{currentCase.abha_id || "12345678"}</span>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-center min-w-[110px]">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-center min-w-[125px]">
                       <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
                         Priority
                       </div>
-                      <span className={`inline-block text-xs font-extrabold px-3 py-1 rounded-full mt-0.5 ${
-                        ["urgent", "high"].includes((currentCase.triage_priority || "").toLowerCase())
+                      <span className={`inline-block text-sm font-black px-3.5 py-1 rounded-full mt-1 ${["urgent", "high"].includes((currentCase.triage_priority || "").toLowerCase())
                           ? "bg-rose-100 text-rose-800 border border-rose-300"
                           : ["moderate", "medium"].includes((currentCase.triage_priority || "").toLowerCase())
-                          ? "bg-amber-100 text-amber-800 border border-amber-300"
-                          : "bg-teal-100 text-teal-800 border border-teal-300"
-                      }`}>
+                            ? "bg-amber-100 text-amber-800 border border-amber-300"
+                            : "bg-teal-100 text-teal-800 border border-teal-300"
+                        }`}>
                         {currentCase.triage_priority.toUpperCase()}
                       </span>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-center min-w-[110px]">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-center min-w-[125px]">
                       <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
                         Waiting Time
                       </div>
-                      <div className="text-sm font-bold text-slate-900 mt-0.5">
+                      <div className="text-base font-bold text-slate-900 mt-1">
                         {formatWaitingMinutes(currentCase.created_at)}
                       </div>
                     </div>
@@ -1445,103 +1395,103 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               {/* ─── 2-COLUMN CLINICAL WORKSPACE GRID ─── */}
               <div className="clinical-workspace-grid">
                 {/* ── LEFT COLUMN: Clinical Information & Field Context ── */}
-                <div className="space-y-5">
+                <div className="space-y-6">
                   {/* Vitals Grid (4 elevated cards) */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-3.5">
+                      <div className="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                         <Activity className="w-4 h-4 text-blue-700" />
                         <span>Vitals Baseline</span>
                       </div>
-                      <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                      <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
                         Recorded by ASHA Tablet
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="clinical-card p-4 hover-lift">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                      <div className="clinical-card p-5 hover-lift">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">BP</span>
-                          <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">High</span>
+                          <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">High</span>
                         </div>
-                        <div className="text-xl font-black text-slate-900 font-mono tracking-tight">
+                        <div className="text-2xl font-black text-slate-900 font-mono tracking-tight">
                           {currentCase.vitals?.bp || "150/95"}
                         </div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">mmHg</div>
+                        <div className="text-xs text-slate-500 font-mono mt-1 font-medium">mmHg</div>
                       </div>
 
-                      <div className="clinical-card p-4 hover-lift">
+                      <div className="clinical-card p-5 hover-lift">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Temp</span>
-                          <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">Fever</span>
+                          <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">Fever</span>
                         </div>
-                        <div className="text-xl font-black text-slate-900 font-mono tracking-tight">
+                        <div className="text-2xl font-black text-slate-900 font-mono tracking-tight">
                           {currentCase.vitals?.temp ? `${currentCase.vitals.temp}°F` : "102°F"}
                         </div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">Fahrenheit</div>
+                        <div className="text-xs text-slate-500 font-mono mt-1 font-medium">Fahrenheit</div>
                       </div>
 
-                      <div className="clinical-card p-4 hover-lift">
+                      <div className="clinical-card p-5 hover-lift">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pulse</span>
-                          <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">Elevated</span>
+                          <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">Elevated</span>
                         </div>
-                        <div className="text-xl font-black text-slate-900 font-mono tracking-tight">
+                        <div className="text-2xl font-black text-slate-900 font-mono tracking-tight">
                           {currentCase.vitals?.pulse || "110"}
                         </div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">bpm</div>
+                        <div className="text-xs text-slate-500 font-mono mt-1 font-medium">bpm</div>
                       </div>
 
-                      <div className="clinical-card p-4 hover-lift">
+                      <div className="clinical-card p-5 hover-lift">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">SpO₂</span>
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Normal</span>
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">Normal</span>
                         </div>
-                        <div className="text-xl font-black text-slate-900 font-mono tracking-tight">
+                        <div className="text-2xl font-black text-slate-900 font-mono tracking-tight">
                           {currentCase.vitals?.spo2 ? `${currentCase.vitals.spo2}%` : "98%"}
                         </div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">Oxygen Sat.</div>
+                        <div className="text-xs text-slate-500 font-mono mt-1 font-medium">Oxygen Sat.</div>
                       </div>
                     </div>
                   </div>
 
                   {/* AI Translated Symptoms & Vernacular Audio */}
-                  <div className="clinical-card p-6 space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                          <Sparkles className="w-4 h-4 text-blue-700" />
+                  <div className="clinical-card p-6 sm:p-7 space-y-5">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                          <Sparkles className="w-5 h-5 text-blue-700" />
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                          <div className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2.5">
                             <span>AI Translated Symptoms</span>
-                            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-0.5 rounded-full">
                               Gemini 3.6 Multimodal
                             </span>
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                      <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
                         Marathi → Clinical English
                       </span>
                     </div>
 
                     {/* Clinical English Standardized */}
-                    <div className="bg-blue-50/40 border-l-4 border-blue-600 rounded-r-xl p-4 space-y-1">
+                    <div className="bg-blue-50/50 border-l-4 border-blue-600 rounded-r-2xl p-5 space-y-1.5">
                       <div className="text-xs font-bold text-blue-900 uppercase tracking-wider">
                         Standardized Clinical English
                       </div>
-                      <p className="text-sm font-semibold text-slate-900 leading-relaxed">
+                      <p className="text-base font-semibold text-slate-900 leading-relaxed m-0">
                         {currentCase.translated_symptoms ||
                           "Patient reports persistent high fever for 3 days, body ache, weakness and loss of appetite."}
                       </p>
                     </div>
 
                     {/* Vernacular Audio Transcription */}
-                    <div className="bg-slate-50 border-l-4 border-slate-400 rounded-r-xl p-4 space-y-1">
+                    <div className="bg-slate-50 border-l-4 border-slate-400 rounded-r-2xl p-5 space-y-1.5">
                       <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Original Spoken Audio Dictation (Marathi)
                       </div>
-                      <p className="text-sm italic text-slate-800 font-medium leading-relaxed">
+                      <p className="text-base italic text-slate-800 font-medium leading-relaxed m-0">
                         "{currentCase.voice_note_text || "मला तीन दिवसांपासून ज्वर आहे, अंग दुखत आहे, खायची इच्छा नाही."}"
                       </p>
                     </div>
@@ -1550,13 +1500,12 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     <button
                       type="button"
                       onClick={toggleAudio}
-                      className={`btn-clinical-outline w-full justify-center gap-2.5 !h-11 text-xs font-bold ${
-                        audioPlaying ? "bg-rose-50 text-rose-700 border-rose-300" : ""
-                      }`}
+                      className={`btn-clinical-outline w-full justify-center gap-3 !h-12 text-sm font-bold rounded-xl ${audioPlaying ? "bg-rose-50 text-rose-700 border-rose-300" : ""
+                        }`}
                     >
                       {audioPlaying ? (
                         <>
-                          <VolumeX className="w-4 h-4 text-rose-600" />
+                          <VolumeX className="w-5 h-5 text-rose-600" />
                           <span>Pause Audio Dictation</span>
                           <div className="waveform-bars ml-2">
                             <div className="waveform-bar" />
@@ -1569,7 +1518,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-4 h-4 text-blue-700" />
+                          <Volume2 className="w-5 h-5 text-blue-700" />
                           <span>Play Original ASHA Audio Dictation</span>
                         </>
                       )}
@@ -1577,43 +1526,43 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   </div>
 
                   {/* Field Observation (by ASHA Worker) */}
-                  <div className="clinical-card p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                      <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <Users className="w-4 h-4 text-teal-700" />
+                  <div className="clinical-card p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2.5">
+                        <Users className="w-5 h-5 text-teal-700" />
                         <span>Field Observation (by ASHA Worker)</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                    <div className="grid grid-cols-3 gap-3.5">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Collected by</div>
-                        <div className="text-sm font-bold text-slate-900 mt-1">ASHA Worker</div>
+                        <div className="text-base font-bold text-slate-900 mt-1">ASHA Worker</div>
                       </div>
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Location</div>
-                        <div className="text-sm font-bold text-slate-900 mt-1">Bhandara, MH</div>
+                        <div className="text-base font-bold text-slate-900 mt-1">Bhandara, MH</div>
                       </div>
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Recorded</div>
-                        <div className="text-sm font-bold text-slate-900 mt-1">8 Sept 2025, 10:23 AM</div>
+                        <div className="text-base font-bold text-slate-900 mt-1">8 Sept 2025, 10:23 AM</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Patient Image / Attachment */}
-                  <div className="clinical-card p-5 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                      <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="clinical-card p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
                         Patient Clinical Attachment
                       </div>
-                      <span className="text-xs text-slate-500 font-mono">1 File</span>
+                      <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">1 File</span>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-5">
                       <div
                         onClick={() => setImagePreviewOpen(true)}
-                        className="relative w-28 h-20 rounded-xl overflow-hidden border border-slate-200 cursor-pointer group shadow-xs shrink-0"
+                        className="relative w-32 h-24 rounded-2xl overflow-hidden border border-slate-200 cursor-pointer group shadow-sm shrink-0"
                       >
                         <img
                           src={
@@ -1623,19 +1572,19 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           alt="Patient Clinical Attachment"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors flex items-center justify-center text-white">
-                          <ExternalLink className="w-4 h-4" />
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/0 transition-colors flex items-center justify-center text-white">
+                          <ExternalLink className="w-5 h-5" />
                         </div>
                       </div>
-                      <div className="text-xs text-slate-600">
-                        <div className="text-sm font-bold text-slate-900">clinical_photo_01.jpg</div>
-                        <div className="text-xs text-slate-500 mt-0.5">High-resolution dermatological lesion preview</div>
+                      <div className="text-slate-600">
+                        <div className="text-base font-bold text-slate-900">clinical_photo_01.jpg</div>
+                        <div className="text-sm text-slate-500 mt-1">High-resolution dermatological lesion preview</div>
                         <button
                           onClick={() => setImagePreviewOpen(true)}
-                          className="text-blue-700 hover:underline font-bold text-xs mt-2 inline-flex items-center gap-1 cursor-pointer"
+                          className="text-blue-700 hover:text-blue-900 font-bold text-sm mt-2.5 inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <span>Enlarge Image</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <ExternalLink className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1643,20 +1592,20 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                 </div>
 
                 {/* ── RIGHT COLUMN: AI Insights & E-Prescription Workspace ── */}
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* AI Triage Insight Card */}
-                  <div className="clinical-card p-5 space-y-3.5">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="clinical-card p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2.5 text-sm font-extrabold text-slate-900 uppercase tracking-wider">
                         <Zap className="w-4 h-4 text-amber-500" />
                         <span>AI Triage Insight</span>
                       </div>
-                      <span className="text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
+                      <span className="text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200 px-3 py-1 rounded-md">
                         {currentCase.department}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-3">
                       <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Priority:</span>
                       <span className="text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-3 py-0.5 rounded-full">
                         {currentCase.triage_priority.toUpperCase()}
@@ -1664,16 +1613,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     </div>
 
                     <div>
-                      <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
                         AI Red Flags Identified
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         {(currentCase.ai_red_flags || [
                           "Persistent high fever for 3 days",
                           "Elevated pulse (110 bpm)",
                           "Risk of secondary bacterial infection",
                         ]).map((flag, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+                          <div key={i} className="flex items-center gap-3 text-sm font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-3">
                             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                             <span>{flag}</span>
                           </div>
@@ -1681,26 +1630,26 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-500 italic border-t border-slate-100 pt-2.5">
+                    <p className="text-xs text-slate-500 italic border-t border-slate-100 pt-3">
                       "AI-generated triage assistance. Final clinical decision remains with the consulting doctor."
                     </p>
                   </div>
 
                   {/* ─── REFERRAL INTELLIGENCE & CARE ROUTING PANEL ─── */}
-                  <div className="clinical-card p-5 space-y-3.5">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold shrink-0">
-                          <GitBranch className="w-4 h-4" />
+                  <div className="clinical-card p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold shrink-0">
+                          <GitBranch className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <div className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2.5">
                             <span>Referral Intelligence</span>
-                            <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
                               Care Routing
                             </span>
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-500 mt-0.5 font-medium">
                             Coordinate secondary/tertiary referrals with structured clinical context
                           </div>
                         </div>
@@ -1708,47 +1657,47 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       <button
                         type="button"
                         onClick={() => setReferralOpen(!referralOpen)}
-                        className="text-xs font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0"
+                        className="text-xs font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0"
                       >
                         <span>{referralOpen ? "Collapse" : "Refer Patient"}</span>
-                        {referralOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        {referralOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                     </div>
 
                     {referralSubmitted ? (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center space-y-2.5">
-                        <div className="flex items-center justify-center gap-2 text-emerald-800 font-bold text-sm">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center space-y-3">
+                        <div className="flex items-center justify-center gap-2.5 text-emerald-800 font-bold text-base">
                           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                           <span>Referral Successfully Created & Queued</span>
                         </div>
-                        <div className="text-xs text-emerald-700 font-medium leading-relaxed">
+                        <div className="text-sm text-emerald-700 font-medium leading-relaxed">
                           Referral package for <strong>{currentCase.patient_name}</strong> transmitted to{" "}
                           <strong>District Hospital Aundh (Cardiology & Specialty Wing)</strong>.
                         </div>
-                        <div className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100/70 py-1.5 px-3 rounded-md inline-block">
+                        <div className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100/70 py-2 px-4 rounded-lg inline-block">
                           ABDM Referral ID: ABDM-REF-2026-9042 • Token Generated
                         </div>
                         <div>
                           <button
                             type="button"
                             onClick={() => setReferralSubmitted(false)}
-                            className="text-xs font-bold text-emerald-800 underline hover:text-emerald-900 cursor-pointer"
+                            className="text-sm font-bold text-emerald-800 underline hover:text-emerald-900 cursor-pointer"
                           >
                             Edit / Send Another Referral
                           </button>
                         </div>
                       </div>
                     ) : referralOpen ? (
-                      <div className="space-y-3.5 pt-1">
+                      <div className="space-y-4 pt-1">
                         {/* Referral Reason */}
                         <div>
-                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
+                          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
                             Referral Reason
                           </label>
                           <select
                             value={referralReason || (currentCase.department === "Cardiology" ? "Cardiology Review" : "Specialist Consultation")}
                             onChange={(e) => setReferralReason(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-bold focus:outline-none focus:border-indigo-500"
+                            className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-sm text-slate-800 font-bold focus:outline-none focus:border-indigo-500"
                           >
                             <option value="Cardiology Review">Cardiology Review (Elevated BP / Cardiac Flags)</option>
                             <option value="Pulmonology Assessment">Pulmonology Assessment (Dyspnea / Chest Infiltration)</option>
@@ -1760,10 +1709,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                         {/* Priority Selector */}
                         <div>
-                          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
+                          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
                             Referral Priority
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2.5">
                             {[
                               { id: "urgent", label: "● Urgent (< 24h)", color: "text-rose-700 border-rose-300 bg-rose-50" },
                               { id: "routine", label: "○ Routine (3-5d)", color: "text-blue-700 border-blue-300 bg-blue-50" },
@@ -1773,11 +1722,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                                 key={opt.id}
                                 type="button"
                                 onClick={() => setReferralPriority(opt.id as any)}
-                                className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                                  referralPriority === opt.id
+                                className={`flex-1 py-2.5 px-3 text-sm font-bold rounded-xl border transition-all cursor-pointer ${referralPriority === opt.id
                                     ? opt.color + " ring-2 ring-indigo-400"
                                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                                }`}
+                                  }`}
                               >
                                 {opt.label}
                               </button>
@@ -1786,10 +1734,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </div>
 
                         {/* Relevant Findings Checklist + Recommended Facility Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                           {/* Checkbox list */}
-                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
-                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
                               Relevant Findings
                             </div>
                             {[
@@ -1801,7 +1749,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             ].map((item) => (
                               <label
                                 key={item.key}
-                                className="flex items-center gap-2 text-xs text-slate-700 font-semibold cursor-pointer"
+                                className="flex items-center gap-2.5 text-sm text-slate-700 font-semibold cursor-pointer"
                               >
                                 <input
                                   type="checkbox"
@@ -1817,25 +1765,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           </div>
 
                           {/* Recommended Specialty & Facility Card */}
-                          <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-3 flex flex-col justify-between">
+                          <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex flex-col justify-between">
                             <div className="space-y-1">
                               <div className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
                                 Recommended Specialty
                               </div>
-                              <div className="text-sm font-black text-slate-900">
+                              <div className="text-base font-black text-slate-900">
                                 {currentCase.department === "Cardiology"
                                   ? "Cardiology & Tele-ICU"
                                   : currentCase.department === "Dermatology"
-                                  ? "Dermatology & Cutaneous Surgery"
-                                  : "Internal Medicine / General Hospital"}
+                                    ? "Dermatology & Cutaneous Surgery"
+                                    : "Internal Medicine / General Hospital"}
                               </div>
                             </div>
-                            <div className="space-y-1 mt-2.5 pt-2 border-t border-blue-200">
+                            <div className="space-y-1.5 mt-3 pt-3 border-t border-blue-200">
                               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                                 Suggested Facility
                               </div>
-                              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                <Building2 className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                              <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-blue-700 shrink-0" />
                                 <span>District Hospital Aundh (12.4 km)</span>
                               </div>
                               <div className="text-xs text-emerald-700 font-bold">
@@ -1849,14 +1797,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         <button
                           type="button"
                           onClick={() => setReferralSubmitted(true)}
-                          className="btn-clinical-primary w-full justify-center !bg-indigo-700 hover:!bg-indigo-800 !h-11 text-xs font-bold"
+                          className="btn-clinical-primary w-full justify-center !bg-indigo-700 hover:!bg-indigo-800 !h-12 text-sm font-bold rounded-xl"
                         >
                           <GitBranch className="w-4 h-4" />
                           <span>Create Referral & Transmit via ABDM</span>
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <span>Need higher facility care or sub-specialist opinion?</span>
                         <button
                           type="button"
@@ -2061,61 +2009,61 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         <div className="modal-overlay-premium modal-backdrop-enter">
           <div className="modal-card-premium modal-enter">
             <div className="modal-header-bar modal-header-bar--rose" />
-            <div className="p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-blue-700" />
-                <h3 className="text-sm font-bold text-slate-900">Clinical Alerts & Notifications</h3>
+            <div className="p-6 space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-blue-700" />
+                  <h3 className="text-base font-bold text-slate-900">Clinical Alerts & Notifications</h3>
+                </div>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-sm">
+                  <div className="font-bold text-rose-900 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-600" />
+                    New High Priority Case
+                  </div>
+                  <div className="text-slate-700 mt-1.5">
+                    Case #23 requires immediate review (BP 150/95, Temp 102°F).
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">18 min ago</div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm">
+                  <div className="font-bold text-amber-900 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-600" />
+                    Moderate Case Waiting
+                  </div>
+                  <div className="text-slate-700 mt-1.5">
+                    Case #18 waiting 32 minutes (Dermatology referral).
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">32 min ago</div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
+                  <div className="font-bold text-emerald-900 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                    Prescription Dispatched
+                  </div>
+                  <div className="text-slate-700 mt-1.5">
+                    Case #21 closed and treatment sent to ASHA worker.
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">45 min ago</div>
+                </div>
+              </div>
+
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-colors"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
-            </div>
-
-            <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs">
-                <div className="font-bold text-rose-900 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-600" />
-                  New High Priority Case
-                </div>
-                <div className="text-slate-700 mt-1">
-                  Case #23 requires immediate review (BP 150/95, Temp 102°F).
-                </div>
-                <div className="text-[10px] text-slate-400 mt-1">18 min ago</div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs">
-                <div className="font-bold text-amber-900 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-600" />
-                  Moderate Case Waiting
-                </div>
-                <div className="text-slate-700 mt-1">
-                  Case #18 waiting 32 minutes (Dermatology referral).
-                </div>
-                <div className="text-[10px] text-slate-400 mt-1">32 min ago</div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
-                <div className="font-bold text-emerald-900 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                  Prescription Dispatched
-                </div>
-                <div className="text-slate-700 mt-1">
-                  Case #21 closed and treatment sent to ASHA worker.
-                </div>
-                <div className="text-[10px] text-slate-400 mt-1">45 min ago</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              Close
-            </button>
             </div>
           </div>
         </div>
@@ -2126,48 +2074,68 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         <div className="modal-overlay-premium modal-backdrop-enter">
           <div className="modal-card-premium modal-enter">
             <div className="modal-header-bar modal-header-bar--green" />
-            <div className="p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-emerald-700" />
-                <h3 className="text-sm font-bold text-slate-900">Offline Sync & System Engine</h3>
+            <div className="p-6 sm:p-7 space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                    <RefreshCw className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900">Offline Sync & System Engine</h3>
+                </div>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="space-y-2 text-xs text-slate-700">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div className="font-bold text-slate-900">SAHARA Offline Bridge v2.4</div>
-                <div className="text-slate-500 text-[11px] mt-0.5">
-                  Dual-layer sync using IndexedDB (Dexie) and FastAPI WebSocket heartbeats.
+              <div className="space-y-3.5 text-sm text-slate-700">
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="font-bold text-base text-slate-900">SAHARA Offline Bridge v2.4</div>
+                  <div className="text-slate-600 text-sm mt-1 leading-relaxed">
+                    Dual-layer sync using IndexedDB (Dexie) and FastAPI WebSocket heartbeats for high reliability in remote clinic environments.
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center py-2.5 border-b border-slate-100 text-sm">
+                  <span className="font-medium text-slate-600">API Gateway Connection</span>
+                  <span className="font-bold text-emerald-700">● 100% Operational</span>
+                </div>
+                <div className="flex justify-between items-center py-2.5 border-b border-slate-100 text-sm">
+                  <span className="font-medium text-slate-600">Database Sync (Supabase)</span>
+                  <span className="font-bold text-emerald-700">● Live Auto-Sync (5s)</span>
+                </div>
+                <div className="flex justify-between items-center py-2.5 border-b border-slate-100 text-sm">
+                  <span className="font-medium text-slate-600">Active Waiting Cases</span>
+                  <span className="font-bold text-slate-900 font-mono text-base">{allCases.length} waiting</span>
+                </div>
+                <div className="flex justify-between items-center py-2.5 border-b border-slate-100 text-sm">
+                  <span className="font-medium text-slate-600">Last Synchronized</span>
+                  <span className="font-bold text-slate-900 font-mono text-sm">
+                    {lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : "Just now"}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span>API Connection</span>
-                <span className="font-bold text-emerald-700">● 100% Operational</span>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    void fetchQueue();
+                    void fetchCompletedCases();
+                  }}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingQueue ? "spin" : ""}`} />
+                  <span>Force Sync Now</span>
+                </button>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span>Pending Outbox</span>
-                <span className="font-bold text-slate-800">0 cases pending</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span>Last Synchronized</span>
-                <span className="font-bold text-slate-800 font-mono">Just now</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              Done
-            </button>
             </div>
           </div>
         </div>
@@ -2178,43 +2146,45 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         <div className="modal-overlay-premium modal-backdrop-enter">
           <div className="modal-card-premium modal-enter">
             <div className="modal-header-bar modal-header-bar--teal" />
-            <div className="p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-teal-700" />
-                <h3 className="text-sm font-bold text-slate-900">ABDM & Data Security</h3>
+            <div className="p-6 sm:p-7 space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-teal-700" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900">ABDM & Data Security</h3>
+                </div>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="space-y-2 text-xs text-slate-700">
-              <div className="p-3 rounded-xl bg-teal-50/70 border border-teal-200">
-                <div className="font-bold text-teal-900">ABHA & HPR Compliance Ready</div>
-                <div className="text-teal-800 text-[11px] mt-0.5">
-                  All teleconsultation records are cryptographically signed and comply with National Digital Health Mission standards.
+              <div className="space-y-3.5 text-sm text-slate-700">
+                <div className="p-4 sm:p-5 rounded-2xl bg-teal-50/70 border border-teal-200">
+                  <div className="font-extrabold text-base text-teal-950">ABHA & HPR Compliance Ready</div>
+                  <div className="text-teal-900 text-sm mt-1 leading-relaxed">
+                    All teleconsultation records are cryptographically signed and comply with National Digital Health Mission (NDHM / ABDM) standards.
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-slate-800 py-1.5 text-sm font-medium">
+                  <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />
+                  <span>End-to-end AES-256 local vault encryption</span>
+                </div>
+                <div className="flex items-center gap-3 text-slate-800 py-1.5 text-sm font-medium">
+                  <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />
+                  <span>Doctor HPR identity authenticated: <strong className="font-mono text-slate-900">DOCTOR-MH-7313</strong></span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-slate-800 py-1">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>End-to-end AES-256 local vault encryption</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-800 py-1">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>Doctor HPR identity authenticated: DOCTOR-MH-7313</span>
-              </div>
-            </div>
 
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              Understood
-            </button>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+              >
+                Understood
+              </button>
             </div>
           </div>
         </div>
@@ -2225,41 +2195,43 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         <div className="modal-overlay-premium modal-backdrop-enter">
           <div className="modal-card-premium modal-enter">
             <div className="modal-header-bar modal-header-bar--blue" />
-            <div className="p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-blue-700" />
-                <h3 className="text-sm font-bold text-slate-900">Clinical Protocols & Help</h3>
+            <div className="p-6 sm:p-7 space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shrink-0">
+                    <Info className="w-5 h-5 text-blue-700" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900">Clinical Protocols & Help</h3>
+                </div>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
+
+              <div className="space-y-3.5 text-sm text-slate-700">
+                <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="font-bold text-base text-slate-900">Triage Escalation Protocol</div>
+                  <div className="text-slate-600 text-sm mt-1 leading-relaxed">
+                    Urgent red-flag cases should be reviewed within 30 minutes. If critical intervention is needed, use the Geospatial Care Radar to route to the nearest CHC.
+                  </div>
+                </div>
+                <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="font-bold text-base text-slate-900">Generic Drug Policy</div>
+                  <div className="text-slate-600 text-sm mt-1 leading-relaxed">
+                    Prescribe PMBJP Jan Aushadhi generic formulations whenever clinically equivalent to reduce out-of-pocket costs for rural patients.
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
-            </div>
-
-            <div className="space-y-2 text-xs text-slate-700">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="font-bold text-slate-900">Triage Escalation Protocol</div>
-                <div className="text-slate-500 text-[11px] mt-0.5">
-                  Urgent red-flag cases should be reviewed within 30 minutes. If critical intervention is needed, use the Geospatial Care Radar to route to the nearest CHC.
-                </div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="font-bold text-slate-900">Generic Drug Policy</div>
-                <div className="text-slate-500 text-[11px] mt-0.5">
-                  Prescribe PMBJP Jan Aushadhi generic formulations whenever clinically equivalent to reduce out-of-pocket costs for rural patients.
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              Close
-            </button>
             </div>
           </div>
         </div>

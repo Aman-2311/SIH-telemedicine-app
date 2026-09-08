@@ -143,11 +143,11 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
           diagnosis: rx.diagnosis,
           date: rx.prescribed_at
             ? new Date(rx.prescribed_at).toLocaleDateString([], {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
             : "Recently",
           medicines: (rx.medicines || []).map((m: any) => ({
             name: m.name,
@@ -1322,11 +1322,10 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                                 Case #{item.id} • {item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recorded"}
                               </div>
                             </div>
-                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                              item.status === "completed"
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${item.status === "completed"
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-amber-100 text-amber-800"
-                            }`}>
+                              }`}>
                               {item.status === "completed" ? "Prescribed" : "In Review"}
                             </span>
                           </div>
@@ -1424,9 +1423,8 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                     onChange={(e) => setMapSearch(e.target.value)}
                   />
                   <button
-                    className={`absolute right-2 top-2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 ${
-                      isListening ? "text-rose-600 bg-rose-50" : ""
-                    }`}
+                    className={`absolute right-2 top-2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 ${isListening ? "text-rose-600 bg-rose-50" : ""
+                      }`}
                     onClick={() => handleVoiceSearch("map")}
                     title="Voice input"
                   >
@@ -1491,13 +1489,12 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                         <div>
                           <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
                             <span
-                              className={`w-2.5 h-2.5 rounded-full ${
-                                fac.badgeColor === "green"
+                              className={`w-2.5 h-2.5 rounded-full ${fac.badgeColor === "green"
                                   ? "bg-emerald-500"
                                   : fac.badgeColor === "red"
-                                  ? "bg-rose-500"
-                                  : "bg-purple-500"
-                              }`}
+                                    ? "bg-rose-500"
+                                    : "bg-purple-500"
+                                }`}
                             />
                             {fac.name}
                           </div>

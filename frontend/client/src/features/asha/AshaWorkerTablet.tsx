@@ -244,8 +244,8 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
         activeTab === "case_detail"
           ? () => setActiveTab("history")
           : activeTab !== "home"
-          ? () => setActiveTab("home")
-          : undefined
+            ? () => setActiveTab("home")
+            : undefined
       }
       fab={activeTab === "home" ? { icon: <Plus className="w-5 h-5" />, label: t.newIntake, onClick: () => setActiveTab("intake") } : undefined}
       language={language}
@@ -586,11 +586,10 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
               <button
                 type="button"
                 onClick={handleMapVoiceSearch}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${
-                  isVoiceSearching
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${isVoiceSearching
                     ? "bg-rose-50 text-rose-700 border-rose-300 animate-pulse"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
+                  }`}
                 title="Voice Search"
               >
                 <Mic className={`w-4 h-4 ${isVoiceSearching ? "text-rose-600" : "text-teal-600"}`} />
@@ -690,13 +689,12 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
                           </div>
 
                           <span
-                            className={`map-facility-dist ${
-                              isPharm
+                            className={`map-facility-dist ${isPharm
                                 ? "map-facility-dist--green"
                                 : isHosp
-                                ? "map-facility-dist--red"
-                                : "map-facility-dist--blue"
-                            }`}
+                                  ? "map-facility-dist--red"
+                                  : "map-facility-dist--blue"
+                              }`}
                           >
                             {fac.distance_km ? `${fac.distance_km} km` : "Nearby"}
                           </span>

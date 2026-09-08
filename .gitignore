@@ -38,4 +38,8 @@ capture_*.mjs
 test_e2e*.mjs
 frontend/capture_*.mjs
 frontend/test_e2e*.mjs
+frontend/trace_*.mjs
+frontend/trace_output.json
+frontend/e2e_verification_report.json
+frontend/verify_*.mjs
 backend/frontend/

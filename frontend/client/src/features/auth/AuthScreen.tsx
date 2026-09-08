@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Stethoscope,
@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   Sparkles,
   Lock,
-  BadgeCheck,
 } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { UserRole } from "../../utils/api";
@@ -26,12 +25,12 @@ interface AuthScreenProps {
   language?: "English" | "हिंदी" | "मराठी";
 }
 
-type Step = "role" | "login" | "create" | "otp" | "success";
+type Step = "splash" | "role" | "login" | "create" | "otp" | "success";
 
 const ROLES = [
-  { key: "asha" as const, icon: <Users className="w-6 h-6" />, label: "ASHA Worker", subtitle: "Community Health Portal", gradient: "linear-gradient(135deg, #0d9b86, #0fb891)" },
-  { key: "doctor" as const, icon: <Stethoscope className="w-6 h-6" />, label: "Doctor", subtitle: "Tele-Consultation Queue", gradient: "linear-gradient(135deg, #123b50, #1a5c74)" },
-  { key: "patient" as const, icon: <UserCheck className="w-6 h-6" />, label: "Patient", subtitle: "Prescriptions & Records", gradient: "linear-gradient(135deg, #15a28f, #3bbfa3)" },
+  { key: "asha" as const, icon: <Users className="w-6 h-6" />, label: "ASHA Worker", gradient: "linear-gradient(135deg, #0d9b86, #0fb891)" },
+  { key: "doctor" as const, icon: <Stethoscope className="w-6 h-6" />, label: "Doctor", gradient: "linear-gradient(135deg, #123b50, #1a5c74)" },
+  { key: "patient" as const, icon: <UserCheck className="w-6 h-6" />, label: "Patient", gradient: "linear-gradient(135deg, #15a28f, #3bbfa3)" },
 ];
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
@@ -41,13 +40,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 }) => {
   const { login, isLoading, error, clearError } = useAuthStore();
 
-  const [step, setStep] = useState<Step>("role");
+  const [step, setStep] = useState<Step>("splash");
   const [selectedRole, setSelectedRole] = useState<"asha" | "doctor" | "patient" | null>(null);
-  const [phone, setPhone] = useState("9000010001");
+  const [phone, setPhone] = useState("9820012345");
   const [fullName, setFullName] = useState("");
   const [otp, setOtp] = useState("");
   const [mockOtp] = useState("1234");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Auto-advance splash → role
+  useEffect(() => {
+    if (step === "splash") {
+      const t = setTimeout(() => setStep("role"), 2200);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
 
   const handleRolePick = (role: "asha" | "doctor" | "patient") => {
     clearError();
@@ -63,23 +70,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setFullName("Dr. Arvind Kulkarni (MD)");
     }
     setStep("login");
-  };
-
-  const handleQuickLogin = async (role: "asha" | "patient" | "doctor") => {
-    clearError();
-    setSelectedRole(role);
-    const canonicalId =
-      role === "asha"
-        ? "TEST-ASHA-MH-0001"
-        : role === "patient"
-        ? "TEST-PATIENT-MH-0002"
-        : "DOC-MH-7001";
-
-    const ok = await login({ abha_id: canonicalId, role });
-    if (ok) {
-      setStep("success");
-      setTimeout(() => onSuccessRole?.(role), 500);
-    }
   };
 
   const handleSendOtp = (e: React.FormEvent) => {
@@ -102,8 +92,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     e.preventDefault();
     clearError();
     if (!selectedRole) return;
-    
+
+    // In demo, any OTP works
     if (isCreating) {
+      // Actually generate dummy ID
       const { generateAbha } = useAuthStore.getState();
       const res = await generateAbha({
         full_name: fullName || "New User",
@@ -112,20 +104,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       });
       if (res?.abha_id || res?.app_id) {
         setStep("success");
-        setTimeout(() => onSuccessRole?.(selectedRole), 600);
+        setTimeout(() => onSuccessRole?.(selectedRole), 800);
       }
     } else {
       const canonicalId =
         selectedRole === "asha"
           ? "TEST-ASHA-MH-0001"
           : selectedRole === "patient"
-          ? "TEST-PATIENT-MH-0002"
-          : "DOC-MH-7001";
+            ? "TEST-PATIENT-MH-0002"
+            : "DOC-MH-7001";
 
       const ok = await login({ abha_id: canonicalId, role: selectedRole });
       if (ok) {
         setStep("success");
-        setTimeout(() => onSuccessRole?.(selectedRole), 600);
+        setTimeout(() => onSuccessRole?.(selectedRole), 800);
       }
     }
   };
@@ -140,11 +132,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       <div className="auth-screen__bg">
         <div className="auth-orb auth-orb--1" />
         <div className="auth-orb auth-orb--2" />
+        <div className="auth-orb auth-orb--3" />
       </div>
 
-      {/* ─── ROLE SELECT / MAIN SIGN IN ─── */}
+      {/* ─── SPLASH ─── */}
+      {step === "splash" && (
+        <div className="auth-splash">
+          <div className="auth-splash__icon">
+            <HeartPulse className="w-10 h-10" />
+          </div>
+          <h1 className="auth-splash__title">SAHARA</h1>
+          <p className="auth-splash__sub">Health Bridge</p>
+          <div className="auth-splash__loader">
+            <span />
+          </div>
+        </div>
+      )}
+
+      {/* ─── ROLE SELECT ─── */}
       {step === "role" && (
-        <div className="auth-card auth-card--wide fade-in" style={{ maxWidth: 480 }}>
+        <div className="auth-card auth-card--wide fade-in">
           {/* Lang switcher */}
           <div className="auth-card__lang">
             {(["English", "हिंदी", "मराठी"] as const).map((l) => (
@@ -165,143 +172,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </div>
 
           <h2 className="auth-card__heading">Welcome to <em>SAHARA</em></h2>
-          <p className="auth-card__sub" style={{ marginBottom: 16 }}>
-            {language === "English" && "Rural Telemedicine & Digital Health Bridge"}
-            {language === "हिंदी" && "ग्रामीण टेलीमेडिसिन और डिजिटल स्वास्थ्य सेतु"}
-            {language === "मराठी" && "ग्रामीण टेलिमेडिसिन आणि डिजिटल आरोग्य सेतू"}
+          <p className="auth-card__sub">
+            {language === "English" && "Rural telemedicine for everyone"}
+            {language === "हिंदी" && "सभी के लिए ग्रामीण टेलीमेडिसिन"}
+            {language === "मराठी" && "सर्वांसाठी ग्रामीण टेलिमेडिसिन"}
           </p>
 
-          {/* Quick Demo Test Access */}
-          <div style={{
-            background: "linear-gradient(135deg, rgba(13, 155, 134, 0.08), rgba(18, 59, 80, 0.08))",
-            border: "1px solid rgba(13, 155, 134, 0.25)",
-            borderRadius: "14px",
-            padding: "12px 14px",
-            marginBottom: 20,
-            textAlign: "left",
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 8,
-            }}>
-              <span style={{
-                fontSize: "0.74rem",
-                fontWeight: 800,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "var(--teal)",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}>
-                <Sparkles className="w-3.5 h-3.5" />
-                1-Click Quick Demo Sign-In
-              </span>
-              <span style={{ fontSize: "0.68rem", color: "var(--muted)", fontWeight: 600 }}>
-                Safe Test Data
-              </span>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {/* Test User 1 - ASHA */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("asha")}
-                disabled={isLoading}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "white",
-                  border: "1px solid var(--line)",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)" }}>
-                    👩‍⚕️ Sunita Patil (TEST)
-                  </div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-                    ASHA Worker • ABHA: TEST-ASHA-MH-0001
-                  </div>
-                </div>
-                <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--teal)" }}>
-                  Enter →
-                </span>
-              </button>
-
-              {/* Test User 2 - Patient */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("patient")}
-                disabled={isLoading}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "white",
-                  border: "1px solid var(--line)",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)" }}>
-                    🩺 Savita Patil (TEST)
-                  </div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-                    Patient Portal • ABHA: TEST-PATIENT-MH-0002
-                  </div>
-                </div>
-                <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--teal)" }}>
-                  Enter →
-                </span>
-              </button>
-
-              {/* Doctor User */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("doctor")}
-                disabled={isLoading}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "white",
-                  border: "1px solid var(--line)",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ink)" }}>
-                    👨‍⚕️ Dr. Arvind Kulkarni (MD)
-                  </div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-                    Doctor Queue • Reg: DOC-MH-7001
-                  </div>
-                </div>
-                <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "var(--teal)" }}>
-                  Enter →
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div className="auth-card__label" style={{ textAlign: "left" }}>
-            {language === "English" ? "Or Continue with Mobile / OTP" : "या मोबाइल / OTP द्वारे पुढे जा"}
+          <div className="auth-card__label">
+            {language === "English" ? "Continue as" : language === "हिंदी" ? "जारी रखें" : "म्हणून पुढे जा"}
           </div>
 
           <div className="role-select">
@@ -314,20 +192,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <div className="role-btn__icon" style={{ background: r.gradient }}>
                   {r.icon}
                 </div>
-                <div style={{ flex: 1, textAlign: "left" }}>
-                  <div className="role-btn__label">{r.label}</div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 500 }}>
-                    {r.subtitle}
-                  </div>
-                </div>
+                <span className="role-btn__label">{r.label}</span>
                 <ArrowRight className="w-4 h-4 role-btn__arrow" />
               </button>
             ))}
           </div>
 
-          <div className="auth-card__trust" style={{ marginTop: 20 }}>
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Cryptographic JWT (HS256) • ABDM Compliant</span>
+          <div className="auth-card__trust">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>ABDM Certified • End-to-End Encrypted</span>
           </div>
         </div>
       )}
@@ -349,7 +222,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             {language === "English" ? "Sign In" : language === "हिंदी" ? "साइन इन करें" : "साइन इन करा"}
           </h2>
           <p className="auth-card__sub">
-            {language === "English" ? "Enter your mobile number to receive OTP" : "जारी रखने के लिए मोबाइल नंबर दर्ज करें"}
+            {language === "English" ? "Enter your mobile number to continue" : language === "हिंदी" ? "जारी रखने के लिए मोबाइल नंबर दर्ज करें" : "पुढे जाण्यासाठी मोबाइल नंबर टाका"}
           </p>
 
           {error && (
@@ -362,7 +235,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           <form onSubmit={handleSendOtp} className="auth-form-inner">
             <label className="auth-field-label">
               <Phone className="w-3.5 h-3.5" />
-              {language === "English" ? "Mobile Number" : "मोबाइल नंबर"}
+              {language === "English" ? "Mobile Number" : language === "हिंदी" ? "मोबाइल नंबर" : "मोबाइल नंबर"}
             </label>
             <div className="auth-input-wrap">
               <span className="auth-input-prefix">+91</span>
@@ -370,28 +243,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 type="tel"
                 value={phone}
                 onChange={(e) => { clearError(); setPhone(e.target.value); }}
-                placeholder="90000 10001"
+                placeholder="98200 12345"
                 maxLength={10}
                 autoFocus
               />
             </div>
 
             <div className="auth-demo-note">
-              <BadgeCheck className="w-3.5 h-3.5 text-teal-600" />
+              <Sparkles className="w-3.5 h-3.5" />
               <span>
-                {selectedRole === "asha" && "Sunita Patil (TEST) • TEST-ASHA-MH-0001"}
-                {selectedRole === "patient" && "Savita Patil (TEST) • TEST-PATIENT-MH-0002"}
-                {selectedRole === "doctor" && "Dr. Arvind Kulkarni (MD) • DOC-MH-7001"}
+                {selectedRole === "asha" && "Test Account: Sunita Patil (TEST) • TEST-ASHA-MH-0001"}
+                {selectedRole === "patient" && "Test Account: Savita Patil (TEST) • TEST-PATIENT-MH-0002"}
+                {selectedRole === "doctor" && "Test Account: Dr. Arvind Kulkarni (MD) • DOC-MH-7001"}
               </span>
             </div>
 
             <button type="submit" className="auth-cta-btn" disabled={isLoading || phone.length < 10}>
               {isLoading ? <RefreshCw className="w-4 h-4 spin" /> : <>Get OTP <ArrowRight className="w-4 h-4" /></>}
             </button>
-            
-            <div style={{ textAlign: "center", marginTop: 12 }}>
-              <button type="button" onClick={() => setStep("create")} style={{ background: "transparent", color: "var(--teal)", fontSize: "0.85rem", fontWeight: 600 }}>
-                {language === "English" ? "Need a new SAHARA ID? Create one" : "SAHARA ID नहीं है? नया बनाएं"}
+
+            <div className="auth-create-link-row">
+              <button type="button" className="auth-create-link-btn" onClick={() => setStep("create")}>
+                {language === "English" ? "Don't have a SAHARA ID? Create one" : "SAHARA ID नहीं है? नया बनाएं"}
               </button>
             </div>
           </form>
@@ -400,13 +273,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
       {/* ─── CREATE ID ─── */}
       {step === "create" && selectedRole === "doctor" && (
-        <DoctorOnboarding 
-          onBack={() => { clearError(); setStep("login"); }} 
+        <DoctorOnboarding
+          onBack={() => { clearError(); setStep("login"); }}
           onComplete={async () => {
             const { generateAbha } = useAuthStore.getState();
             await generateAbha({
               full_name: "Dr. Verified",
-              phone_number: phone || "9000010003",
+              phone_number: phone || "9820012345",
               role: "doctor"
             });
             setStep("success");
@@ -427,10 +300,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </div>
 
           <h2 className="auth-card__heading">
-            {language === "English" ? "Create SAHARA ID" : "SAHARA ID बनाएं"}
+            {language === "English" ? "Create SAHARA ID" : language === "हिंदी" ? "SAHARA ID बनाएं" : "SAHARA ID तयार करा"}
           </h2>
           <p className="auth-card__sub">
-            {language === "English" ? "Generate a synthetic digital health identity" : "नई डिजिटल स्वास्थ्य पहचान बनाएं"}
+            {language === "English" ? "Generate a new digital health identity" : "नई डिजिटल स्वास्थ्य पहचान बनाएं"}
           </p>
 
           <form onSubmit={handleCreateId} className="auth-form-inner">
@@ -443,11 +316,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 type="text"
                 value={fullName}
                 onChange={(e) => { clearError(); setFullName(e.target.value); }}
-                placeholder="Savita Patil (TEST)"
+                placeholder="Savita Patil"
                 required
               />
             </div>
-            
+
             <label className="auth-field-label">
               <Phone className="w-3.5 h-3.5" />
               {language === "English" ? "Mobile Number" : "मोबाइल नंबर"}
@@ -458,7 +331,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 type="tel"
                 value={phone}
                 onChange={(e) => { clearError(); setPhone(e.target.value); }}
-                placeholder="90000 10002"
+                placeholder="98200 12345"
                 maxLength={10}
                 required
               />
@@ -485,7 +358,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </div>
 
           <h2 className="auth-card__heading">
-            {language === "English" ? "Verify OTP" : "OTP सत्यापित करें"}
+            {language === "English" ? "Verify OTP" : language === "हिंदी" ? "OTP सत्यापित करें" : "OTP सत्यापित करा"}
           </h2>
           <p className="auth-card__sub">
             {language === "English" ? `Code sent to +91 ${phone}` : `+91 ${phone} पर कोड भेजा गया`}
@@ -533,7 +406,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <div className="auth-success-ring" />
             <div className="auth-success-ring auth-success-ring--2" />
           </div>
-          <h2 className="auth-card__heading">Signed In!</h2>
+          <h2 className="auth-card__heading">Welcome!</h2>
           <p className="auth-card__sub">Taking you to your dashboard…</p>
           <div className="auth-splash__loader" style={{ marginTop: 16 }}>
             <span />

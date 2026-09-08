@@ -315,7 +315,7 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
       patient_name: item.patient_name,
       translated_symptoms: item.translated_symptoms || item.symptoms,
       vitals: item.vitals,
-      voice_note_text: item.symptoms || item.translated_symptoms,
+      voice_note_text: item.symptoms || item.translated_symptoms || "",
     };
 
     try {
