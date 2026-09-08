@@ -79,6 +79,7 @@ interface IntakeState {
   setIsListening: (isListening: boolean) => void;
   extractVoiceAI: (text: string) => Promise<ExtractVoiceResponse>;
   submitIntake: () => Promise<{ success: boolean; offline: boolean; data?: IntakeResponse }>;
+  syncPendingIntake: (id: string) => Promise<{ success: boolean; message: string }>;
   fetchRecentIntakes: () => Promise<void>;
   resetForm: () => void;
   clearError: () => void;
@@ -302,6 +303,37 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
         });
         return { success: true, offline: false };
       }
+    }
+  },
+
+  syncPendingIntake: async (id: string) => {
+    const item = get().submittedIntakes.find((i) => i.id === id);
+    if (!item) return { success: false, message: "Record not found" };
+
+    const payload: IntakePayload = {
+      abha_id: item.abha_id,
+      patient_name: item.patient_name,
+      translated_symptoms: item.translated_symptoms || item.symptoms,
+      vitals: item.vitals,
+      voice_note_text: item.symptoms || item.translated_symptoms,
+    };
+
+    try {
+      const res = await api.post<IntakeResponse>("/api/intake/", payload);
+      const officialCaseId = String((res.data as any)?.case_id || (res.data as any)?.id || item.id);
+      const updated = get().submittedIntakes.map((i) =>
+        i.id === id ? { ...i, synced: true, case_id: officialCaseId } : i
+      );
+      try {
+        localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));
+      } catch {}
+      set({ submittedIntakes: updated });
+      return { success: true, message: "Synced successfully to Doctor Queue!" };
+    } catch (e: any) {
+      return {
+        success: false,
+        message: e?.response?.data?.detail || e.message || "Sync failed",
+      };
     }
   },
 

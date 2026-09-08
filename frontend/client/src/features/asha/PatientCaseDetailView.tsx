@@ -1,25 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ArrowLeft,
-  User,
   Heart,
   Gauge,
   Thermometer,
   Activity,
-  ShieldCheck,
   Stethoscope,
   Clock,
   CheckCircle2,
-  AlertTriangle,
-  Building2,
-  Pill,
   MapPin,
-  ExternalLink,
-  ChevronRight,
   Info,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
-import { SubmittedIntakeRecord } from "../../store/useIntakeStore";
-import { Facility } from "../../utils/api";
+import { SubmittedIntakeRecord, useIntakeStore } from "../../store/useIntakeStore";
 
 interface PatientCaseDetailViewProps {
   intake: SubmittedIntakeRecord;
@@ -32,368 +26,509 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
   onBack,
   onNavigateToMap,
 }) => {
-  const isHigh = intake.triage_priority === "High";
+  const { syncPendingIntake } = useIntakeStore();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  const priorityLower = (intake.triage_priority || "Routine").toLowerCase();
+  const isHigh = priorityLower === "high" || priorityLower === "urgent";
+  const isMedium = priorityLower === "medium" || priorityLower === "moderate";
   const isSynced = intake.synced;
   const vitals = intake.vitals || ({} as any);
 
-  // Derive status label strictly following case status model
-  const statusLabel = isSynced ? "Synced to Doctor" : "Pending Sync";
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    const result = await syncPendingIntake(intake.id);
+    setIsSyncing(false);
+    setSyncFeedback(result.message);
+  };
 
   return (
-    <div className="page fade-in pb-16 max-w-4xl mx-auto">
-      {/* Top Back Nav & Case Number */}
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-800 hover:text-teal-950 p-1.5 rounded-lg hover:bg-teal-50 transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to List</span>
+    <div className="cd-wrapper fade-in">
+      {/* ── Top Navigation Bar ── */}
+      <div className="cd-top-bar">
+        <button onClick={onBack} className="cd-back-btn">
+          <ArrowLeft style={{ width: 16, height: 16 }} />
+          <span>Back to Patients</span>
         </button>
 
-        <span className="text-xs font-mono text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
-          Case ID: #{intake.id.replace("case-", "").slice(0, 8)}
+        <span className="cd-case-id">
+          Case ID: #{String(intake.case_id || intake.id).replace("case-", "").slice(0, 8)}
         </span>
       </div>
 
-      {/* ── 1. PATIENT HEADER ── */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">
-              {(intake.patient_name || "P")[0].toUpperCase()}
+      {/* ── Sync Alert Banner if not yet synced ── */}
+      {!isSynced && (
+        <div style={{
+          background: "#fffbeb",
+          border: "1px solid #fde68a",
+          borderRadius: 14,
+          padding: 18,
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12
+        }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "#fef3c7",
+              color: "#b45309",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              marginTop: 2
+            }}>
+              <Clock style={{ width: 20, height: 20 }} />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-slate-900 leading-tight">
-                  {intake.patient_name}
-                </h2>
-                <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    isHigh
-                      ? "bg-rose-50 text-rose-700 border border-rose-200"
-                      : intake.triage_priority === "Medium"
-                      ? "bg-amber-50 text-amber-700 border border-amber-200"
-                      : "bg-slate-100 text-slate-700 border border-slate-200"
-                  }`}
-                >
-                  {intake.triage_priority} Priority
-                </span>
+              <div style={{ fontWeight: 800, fontSize: 14, color: "#78350f" }}>
+                Pending Sync to Doctor Queue
               </div>
-              <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
-                <span>ABHA: <strong>{intake.abha_id}</strong></span>
-                <span>•</span>
-                <span>{intake.department || "General Medicine"}</span>
-                <span>•</span>
-                <span>{intake.timestamp}</span>
+              <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>
+                This intake was recorded offline. Click to dispatch directly to Dr. Arvind Kulkarni's clinical queue.
               </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:self-center">
-            <span
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
-                isSynced
-                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                  : "bg-amber-50 text-amber-800 border border-amber-200"
-              }`}
-            >
-              {isSynced ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
+              {syncFeedback && (
+                <div style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#065f46",
+                  background: "#d1fae5",
+                  padding: "3px 8px",
+                  borderRadius: 6,
+                  display: "inline-block"
+                }}>
+                  {syncFeedback}
+                </div>
               )}
-              <span>{statusLabel}</span>
+            </div>
+          </div>
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            style={{
+              padding: "9px 16px",
+              background: "#d97706",
+              color: "#ffffff",
+              fontSize: 12,
+              fontWeight: 800,
+              borderRadius: 10,
+              border: "none",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+            }}
+          >
+            <RefreshCw style={{ width: 14, height: 14, animation: isSyncing ? "spin 1s linear infinite" : "none" }} />
+            <span>{isSyncing ? "Syncing..." : "Sync to Doctor Now"}</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── 1. PATIENT HEADER CARD ── */}
+      <div className="cd-patient-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div className="cd-patient-avatar">
+            {(intake.patient_name || "P")[0].toUpperCase()}
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <h1 className="cd-patient-name">{intake.patient_name}</h1>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  padding: "3px 10px",
+                  borderRadius: 20,
+                  background: isHigh ? "#ffe4e6" : isMedium ? "#fef3c7" : "#eff6ff",
+                  color: isHigh ? "#9f1239" : isMedium ? "#92400e" : "#1e40af",
+                  border: `1px solid ${isHigh ? "#fecdd3" : isMedium ? "#fde68a" : "#bfdbfe"}`
+                }}
+              >
+                {intake.triage_priority || "Routine"} Priority
+              </span>
+            </div>
+            <div className="cd-meta-row">
+              <span>ABHA ID: <strong style={{ color: "#0f172a", fontFamily: "monospace" }}>{intake.abha_id}</strong></span>
+              <span style={{ color: "#cbd5e1" }}>•</span>
+              <span>{intake.department || "General Medicine"}</span>
+              <span style={{ color: "#cbd5e1" }}>•</span>
+              <span>{intake.timestamp || "Today"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          {isSynced ? (
+            <span className="cd-badge-synced">
+              <CheckCircle2 style={{ width: 15, height: 15, color: "#059669" }} />
+              <span>Synced to Doctor</span>
             </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. RECORDED VITALS (Only actual values) ── */}
-      <div className="mb-5">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
-          Recorded Vitals
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {vitals.bp && (
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
-                <Gauge className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-400 font-medium">Blood Pressure</div>
-                <div className="text-sm font-bold text-slate-900">{vitals.bp} mmHg</div>
-              </div>
-            </div>
-          )}
-
-          {vitals.pulse && (
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
-                <Heart className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-400 font-medium">Pulse Rate</div>
-                <div className="text-sm font-bold text-slate-900">{vitals.pulse} bpm</div>
-              </div>
-            </div>
-          )}
-
-          {vitals.temp && (
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-                <Thermometer className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-400 font-medium">Body Temp</div>
-                <div className="text-sm font-bold text-slate-900">{vitals.temp}°F</div>
-              </div>
-            </div>
-          )}
-
-          {vitals.spo2 && (
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                <Activity className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-400 font-medium">SpO₂ Oxygen</div>
-                <div className="text-sm font-bold text-slate-900">{vitals.spo2}%</div>
-              </div>
-            </div>
-          )}
-
-          {!vitals.bp && !vitals.pulse && !vitals.temp && !vitals.spo2 && (
-            <div className="col-span-full p-4 bg-slate-50 text-slate-500 rounded-xl border border-slate-200 text-xs italic">
-              No specific vitals were recorded for this intake.
-            </div>
+          ) : (
+            <span className="cd-badge-pending">
+              <Clock style={{ width: 15, height: 15, color: "#d97706" }} />
+              <span>Pending Sync</span>
+            </span>
           )}
         </div>
       </div>
 
-      {/* ── 3. SYMPTOMS & CLINICAL TRANSLATION ── */}
-      <div className="mb-5">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
-          Symptom Dictation & Translation
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+      {/* ── 2. RECORDED VITALS (Large, Spacious, Non-Clipping) ── */}
+      <div style={{ marginBottom: 24 }}>
+        <div className="cd-section-title">Recorded Clinical Vitals</div>
+        <div className="cd-vitals-grid">
+          {/* Blood Pressure */}
+          <div className="cd-vital-card">
+            <div className="cd-vital-top">
+              <span className="cd-vital-label">Blood Pressure</span>
+              <div className="cd-vital-icon-wrap" style={{ background: "#f0f9ff", color: "#0284c7" }}>
+                <Gauge style={{ width: 18, height: 18 }} />
+              </div>
+            </div>
             <div>
-              <div className="text-xs font-bold text-slate-500 mb-1.5 flex items-center justify-between">
-                <span>Original Statement</span>
-                <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                  Local Speech
-                </span>
-              </div>
-              <p className="text-xs text-slate-800 italic leading-relaxed font-sans">
-                "{intake.symptoms || "Symptom note recorded via voice"}"
-              </p>
+              <div className="cd-vital-val">{vitals.bp || "--"}</div>
+              <div className="cd-vital-unit">mmHg</div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-teal-50/70 to-emerald-50/40 p-4 rounded-xl border border-teal-200 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="text-xs font-bold text-teal-900 mb-1.5 flex items-center justify-between">
-                <span>AI Clinical Translation</span>
-                <span className="text-[10px] font-bold bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded">
-                  Gemini Clinical NLP
-                </span>
+          {/* Pulse Rate */}
+          <div className="cd-vital-card">
+            <div className="cd-vital-top">
+              <span className="cd-vital-label">Pulse Rate</span>
+              <div className="cd-vital-icon-wrap" style={{ background: "#fff1f2", color: "#e11d48" }}>
+                <Heart style={{ width: 18, height: 18 }} />
               </div>
-              <p className="text-xs text-slate-900 font-medium leading-relaxed">
-                {intake.translated_symptoms || intake.symptoms}
-              </p>
+            </div>
+            <div>
+              <div className="cd-vital-val">{vitals.pulse || "--"}</div>
+              <div className="cd-vital-unit">beats / min</div>
+            </div>
+          </div>
+
+          {/* Temperature */}
+          <div className="cd-vital-card">
+            <div className="cd-vital-top">
+              <span className="cd-vital-label">Temperature</span>
+              <div className="cd-vital-icon-wrap" style={{ background: "#fffbeb", color: "#d97706" }}>
+                <Thermometer style={{ width: 18, height: 18 }} />
+              </div>
+            </div>
+            <div>
+              <div className="cd-vital-val">{vitals.temp || "--"}</div>
+              <div className="cd-vital-unit">°Fahrenheit</div>
+            </div>
+          </div>
+
+          {/* Oxygen (SpO2) */}
+          <div className="cd-vital-card">
+            <div className="cd-vital-top">
+              <span className="cd-vital-label">Oxygen SpO₂</span>
+              <div className="cd-vital-icon-wrap" style={{ background: "#ecfdf5", color: "#059669" }}>
+                <Activity style={{ width: 18, height: 18 }} />
+              </div>
+            </div>
+            <div>
+              <div className="cd-vital-val">{vitals.spo2 ? `${vitals.spo2}%` : "--"}</div>
+              <div className="cd-vital-unit">Blood Oxygen</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── 4. AI TRIAGE & NOTE ── */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-900">AI Triage Assessment</span>
+      {/* ── 3. SYMPTOM DICTATION & CLINICAL TRANSLATION ── */}
+      <div style={{ marginBottom: 24 }}>
+        <div className="cd-section-title">Symptom Dictation & Translation</div>
+        <div className="cd-symptom-grid">
+          {/* Patient Dictation */}
+          <div className="cd-symptom-card">
+            <div className="cd-card-header">
+              <span className="cd-card-title">Patient Voice Note</span>
+              <span className="cd-card-tag">Local Speech</span>
+            </div>
+            <p className="cd-symptom-text" style={{ fontStyle: "italic" }}>
+              "{intake.symptoms || "No audio note recorded."}"
+            </p>
+          </div>
+
+          {/* AI Clinical Translation */}
+          <div className="cd-symptom-card-nlp">
+            <div className="cd-card-header">
+              <span className="cd-card-title" style={{ color: "#0f766e", display: "flex", alignItems: "center", gap: 6 }}>
+                <Sparkles style={{ width: 14, height: 14 }} />
+                Clinical Translation
+              </span>
+              <span className="cd-card-tag" style={{ background: "#ccfbf1", color: "#0f766e" }}>
+                Gemini Clinical NLP
+              </span>
+            </div>
+            <p className="cd-symptom-text-nlp">
+              {intake.translated_symptoms || intake.symptoms || "Evaluation complete."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 4. AI TRIAGE ASSESSMENT ── */}
+      <div className="cd-panel">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>AI Triage Assessment</span>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                isHigh ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"
-              }`}
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                padding: "2px 8px",
+                borderRadius: 12,
+                background: isHigh ? "#ffe4e6" : isMedium ? "#fef3c7" : "#eff6ff",
+                color: isHigh ? "#9f1239" : isMedium ? "#92400e" : "#1e40af"
+              }}
             >
-              Priority: {intake.triage_priority}
+              {intake.triage_priority || "Routine"}
             </span>
           </div>
-          <span className="text-[11px] text-slate-500">Department: {intake.department || "General Medicine"}</span>
+          <span style={{ fontSize: 12, color: "#64748b" }}>
+            Recommended Department: <strong style={{ color: "#0f172a" }}>{intake.department || "General Medicine"}</strong>
+          </span>
         </div>
 
         {intake.ai_recommendation && (
-          <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed mb-3">
+          <div style={{
+            background: "#f8fafc",
+            border: "1px solid #f1f5f9",
+            borderRadius: 12,
+            padding: 14,
+            fontSize: 14,
+            lineHeight: 1.6,
+            color: "#334155",
+            marginBottom: 12
+          }}>
             {intake.ai_recommendation}
-          </p>
+          </div>
         )}
 
-        <div className="flex items-center gap-2 text-[11px] text-slate-400 italic">
-          <Info className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-          <span>AI-assisted triage. Clinical decisions are made by the consulting doctor.</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#94a3b8" }}>
+          <Info style={{ width: 14, height: 14, flexShrink: 0 }} />
+          <span>AI-assisted triage. Clinical decisions and prescriptions are verified by consulting doctors.</span>
         </div>
       </div>
 
-      {/* ── 5. DOCTOR CONSULTATION / CARE PLAN ── */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-5">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-          Consultation & Doctor Review
-        </h3>
-
-        {/* Doctor Summary List / Card */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 mb-4 text-xs">
-          <div>
-            <span className="text-slate-400 font-semibold block text-[11px]">DOCTOR</span>
-            <span className="font-bold text-slate-800">
-              {isSynced ? "Dr. Arvind Kulkarni" : "Waiting for specialist assignment"}
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 font-semibold block text-[11px]">SPECIALITY / FACILITY</span>
-            <span className="font-medium text-slate-700">
-              {isSynced ? "Cardiology • Sub-District Hospital" : "Awaiting assignment"}
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 font-semibold block text-[11px]">CONSULTATION STATUS</span>
-            <span className={`font-bold ${intake.status === "completed" ? "text-emerald-700" : "text-amber-700"}`}>
-              {intake.status === "completed" ? "✓ Reviewed • Prescription Ready" : "Queued for Doctor Review"}
-            </span>
-          </div>
+      {/* ── 5. DOCTOR TELECONSULTATION STATUS & PRESCRIPTION ── */}
+      <div className="cd-panel">
+        <div className="cd-section-title" style={{ marginBottom: 14 }}>
+          Teleconsultation Status & Treatment Plan
         </div>
 
-        {/* Treatment Plan if completed with real prescription */}
         {intake.status === "completed" && intake.prescription?.diagnosis ? (
-          <div className="space-y-3 pt-1">
-            <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-              <span>Treatment Plan</span>
+          /* When Doctor has finished reviewing and prescribed */
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: "#065f46", display: "flex", alignItems: "center", gap: 8 }}>
+                <CheckCircle2 style={{ width: 18, height: 18, color: "#059669" }} />
+                Prescription Ready
+              </span>
               {intake.prescription?.doctor_name && (
-                <span className="text-[11px] font-normal text-slate-500">
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#475569", background: "#f1f5f9", padding: "4px 12px", borderRadius: 8 }}>
                   By {intake.prescription.doctor_name}
                 </span>
               )}
             </div>
-            <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-3.5 space-y-2 text-xs">
+
+            <div style={{
+              background: "#ecfdf5",
+              border: "1px solid #a7f3d0",
+              borderRadius: 14,
+              padding: 18,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12
+            }}>
               <div>
-                <span className="font-bold text-emerald-950 block mb-0.5">Diagnosis:</span>
-                <span className="text-emerald-900 font-medium">
-                  {intake.prescription.diagnosis}
+                <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#065f46", display: "block", marginBottom: 2 }}>
+                  Diagnosis
                 </span>
+                <p style={{ fontSize: 15, fontWeight: 700, color: "#064e3b", margin: 0 }}>
+                  {intake.prescription.diagnosis}
+                </p>
               </div>
+
               {intake.prescription.medicines && intake.prescription.medicines.length > 0 && (
-                <div className="pt-2 border-t border-emerald-200/60">
-                  <span className="font-bold text-emerald-950 block mb-1">Prescribed Medicines:</span>
-                  <ul className="list-disc list-inside text-emerald-900 space-y-0.5 font-medium">
+                <div style={{ paddingTop: 10, borderTop: "1px solid #a7f3d0" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#065f46", display: "block", marginBottom: 8 }}>
+                    Prescribed Medicines
+                  </span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {intake.prescription.medicines.map((med: any, idx: number) => (
-                      <li key={idx}>
-                        <span className="font-bold">{med.name}</span> ({med.dosage} • {med.duration})
+                      <div key={idx} style={{ background: "#ffffff", padding: 12, borderRadius: 10, border: "1px solid #d1fae5" }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>{med.name}</div>
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                          {med.dosage} • {med.duration}
+                        </div>
                         {med.generic_alternative && (
-                          <span className="text-emerald-700 block text-[11px] pl-4">
-                            ↳ Alternative: {med.generic_alternative}
-                          </span>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#059669", marginTop: 4 }}>
+                            ↳ Jan Aushadhi Affordable Generic: {med.generic_alternative}
+                          </div>
                         )}
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
+
               {intake.prescription.notes && (
-                <div className="pt-2 border-t border-emerald-200/60 text-[11px] text-emerald-800">
-                  <span className="font-bold">Doctor's Advice: </span>
-                  {intake.prescription.notes}
+                <div style={{ paddingTop: 10, borderTop: "1px solid #a7f3d0", fontSize: 12, color: "#065f46" }}>
+                  <strong>Doctor's Advice: </strong>{intake.prescription.notes}
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 italic">
-            Prescription and treatment plan will appear once the consulting doctor finishes clinical review.
+          /* When waiting in doctor queue */
+          <div style={{
+            padding: 18,
+            borderRadius: 14,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 14
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: "#ccfbf1",
+                color: "#0f766e",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}>
+                <Stethoscope style={{ width: 22, height: 22 }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
+                  Queued for Teleconsultation Doctor Review
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>
+                  Case is active in Dr. Arvind Kulkarni's queue. Digital prescription will appear here once reviewed.
+                </div>
+              </div>
+            </div>
+            <span style={{
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "5px 12px",
+              borderRadius: 8,
+              background: "#fef3c7",
+              color: "#92400e",
+              border: "1px solid #fde68a",
+              whiteSpace: "nowrap"
+            }}>
+              Awaiting Doctor
+            </span>
           </div>
         )}
       </div>
 
-      {/* ── 6. WHERE TO GO NEXT (Care Destination Section) ── */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Where to Go Next
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Recommended healthcare facility for medications & follow-up care.
-            </p>
+      {/* ── 6. RECOMMENDED CARE FACILITIES ── */}
+      <div className="cd-panel">
+        <div style={{ marginBottom: 14 }}>
+          <div className="cd-section-title">Recommended Care Facilities</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+            Nearby Jan Aushadhi generic pharmacy and referral hospital.
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Nearest PMBJP Jan Aushadhi Pharmacy */}
-          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex flex-col justify-between">
+        <div className="cd-facilities-grid">
+          {/* Pharmacy */}
+          <div className="cd-facility-card" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", border: "1px solid #bbf7d0" }}>
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 6 }}>
                   Generic Pharmacy (80% Off)
                 </span>
-                <span className="text-xs font-bold text-emerald-900">0.8 km</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>0.8 km</span>
               </div>
-              <div className="font-bold text-slate-900 text-sm">PMBJP Jan Aushadhi Kendra</div>
-              <p className="text-xs text-slate-600 mt-0.5">
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", marginTop: 6 }}>
+                PMBJP Jan Aushadhi Kendra
+              </div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
                 Main Market Road, Near Panchayat Office
-              </p>
+              </div>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-emerald-200/50 flex items-center justify-between">
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <button
                 onClick={() => onNavigateToMap && onNavigateToMap()}
-                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#166534",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
               >
-                <MapPin className="w-3.5 h-3.5" />
+                <MapPin style={{ width: 14, height: 14 }} />
                 <span>View on Map</span>
               </button>
-              <a
-                href="https://www.google.com/maps/search/Jan+Aushadhi+Kendra"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"
-              >
-                <span>Get Directions</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#15803d" }}>Open 24/7</span>
             </div>
           </div>
 
-          {/* District Civil Hospital or PHC */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+          {/* Hospital */}
+          <div className="cd-facility-card" style={{ background: "linear-gradient(135deg, #fff1f2 0%, #fff7ed 100%)", border: "1px solid #fecdd3" }}>
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#9f1239", background: "#ffe4e6", padding: "2px 8px", borderRadius: 6 }}>
                   Emergency & Inpatient
                 </span>
-                <span className="text-xs font-bold text-slate-800">2.9 km</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "#9f1239" }}>2.9 km</span>
               </div>
-              <div className="font-bold text-slate-900 text-sm">District Civil Hospital</div>
-              <p className="text-xs text-slate-600 mt-0.5">
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", marginTop: 6 }}>
+                District Civil Hospital
+              </div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
                 Civil Lines, 24/7 Casualty & Diagnostic Lab
-              </p>
+              </div>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between">
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #fecdd3", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <button
                 onClick={() => onNavigateToMap && onNavigateToMap()}
-                className="text-xs font-bold text-teal-800 hover:text-teal-950 flex items-center gap-1"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#9f1239",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
               >
-                <MapPin className="w-3.5 h-3.5" />
+                <MapPin style={{ width: 14, height: 14 }} />
                 <span>View on Map</span>
               </button>
-              <a
-                href="https://www.google.com/maps/search/District+Hospital"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"
-              >
-                <span>Get Directions</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#be123c" }}>Emergency Ready</span>
             </div>
           </div>
         </div>

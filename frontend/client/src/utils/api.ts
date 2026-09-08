@@ -16,9 +16,22 @@ export const api = axios.create({
 // Automatic JWT Bearer token attachment
 api.interceptors.request.use(
   (config) => {
-    const token =
+    let token =
       localStorage.getItem("sahara_access_token") ||
       localStorage.getItem("swasthya_access_token");
+
+    // If unauthenticated or cold start, derive demo token from current active role
+    if (!token) {
+      let role = "asha";
+      try {
+        const storedUser = localStorage.getItem("sahara_user");
+        if (storedUser) {
+          role = JSON.parse(storedUser).role || "asha";
+        }
+      } catch {}
+      token = `mock_jwt_token_${role}_999`;
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
