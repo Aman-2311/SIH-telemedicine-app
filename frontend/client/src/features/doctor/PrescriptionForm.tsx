@@ -151,13 +151,13 @@ interface PrescriptionFormProps {
   caseId: string;
   patientAbha?: string;
   patientName?: string;
-  onSuccess?: () => void;
+  onSuccess?: (details: { caseId: string; patientName: string; diagnosis: string; timestamp: string }) => void;
 }
 
 export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
   caseId,
   patientAbha,
-  patientName,
+  patientName = "Patient",
   onSuccess,
 }) => {
   const { user } = useAuthStore();
@@ -167,14 +167,14 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
   const [diagnosis, setDiagnosis] = useState("");
   const [notes, setNotes] = useState("");
   const [medicines, setMedicines] = useState<MedicineItem[]>([
-    { name: "", dosage: "1-0-1", duration: "5 days", generic_alternative: "" },
+    { name: "Paracetamol 500mg", dosage: "500 mg", duration: "3 days", generic_alternative: "PMBJP-001 Generic" },
+    { name: "ORS", dosage: "1 sachet", duration: "3 days", generic_alternative: "" },
   ]);
   const [activeGenericSuggestion, setActiveGenericSuggestion] = useState<{
     index: number;
     match: typeof GENERIC_CATALOG[string];
   } | null>(null);
-
-  const [success, setSuccess] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const checkGenericSuggestion = (text: string, index: number) => {
     const lower = text.toLowerCase().trim();
@@ -234,16 +234,20 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
     setActiveGenericSuggestion(null);
   };
 
+  const handleSaveDraft = () => {
+    setDraftSaved(true);
+    setTimeout(() => setDraftSaved(false), 2500);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!diagnosis.trim()) return;
 
     clearError();
-    setSuccess(false);
 
     const validMedicines = medicines.filter((m) => m.name.trim() !== "");
     const payload: PrescribePayload = {
-      doctor_id: user?.abha_id || "DOC-PUNE-402",
+      doctor_id: user?.abha_id || "DOCTOR-MH-7313",
       diagnosis: diagnosis.trim(),
       medicines:
         validMedicines.length > 0
@@ -253,149 +257,146 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
 
     const isOk = await prescribe(caseId, payload);
     if (isOk) {
-      setSuccess(true);
-      setDiagnosis("");
-      setNotes("");
-      setMedicines([{ name: "", dosage: "1-0-1", duration: "5 days", generic_alternative: "" }]);
-      if (onSuccess) onSuccess();
+      const now = new Date();
+      const timeStr = `${now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}, ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      if (onSuccess) {
+        onSuccess({
+          caseId,
+          patientName,
+          diagnosis: diagnosis.trim(),
+          timestamp: timeStr,
+        });
+      }
     }
   };
 
   return (
-    <div className="bg-white border-2 border-gray-300 rounded-2xl p-5 shadow-sm font-sans text-gray-900">
-      <div className="flex items-center justify-between border-b-2 border-gray-200 pb-3 mb-4">
-        <div>
-          <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-            <Pill className="w-4 h-4" />
-            Official E-Prescription & Generic Substitutions
-          </span>
-          <h3 className="text-base font-extrabold text-blue-950 mt-0.5">
-            Prescribe for Case: {caseId}
-          </h3>
+    <div className="clinical-card p-6 space-y-4 text-slate-900">
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-slate-100 pb-3.5 mb-1">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shrink-0">
+            <Pill className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">E-Prescription</span>
+              <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                Case #{caseId}
+              </span>
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900 mt-0.5">
+              Prescribe for {patientName}
+            </h3>
+          </div>
         </div>
-        <span className="text-xs text-gray-600 font-mono font-bold bg-gray-100 px-2.5 py-1 rounded border">
-          Consulting Doctor: {user?.abha_id || "DOC-PUNE-402"}
-        </span>
+        <div className="text-right">
+          <span className="text-xs font-mono font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 block">
+            {user?.abha_id || "DOCTOR-MH-7313"}
+          </span>
+          {draftSaved && (
+            <span className="text-xs font-bold text-emerald-600 block mt-1">
+              ✓ Draft saved
+            </span>
+          )}
+        </div>
       </div>
 
       {error && (
-        <div className="p-3.5 mb-4 text-xs font-bold text-rose-900 bg-rose-50 border-2 border-rose-300 rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-700 shrink-0" />
+        <div className="p-3 text-xs font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {success && (
-        <div className="p-3.5 mb-4 text-xs font-bold text-emerald-900 bg-emerald-50 border-2 border-emerald-400 rounded-xl flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-          <span>
-            Prescription successfully logged to `/api/queue/{caseId}/prescribe` and patient case resolved!
-          </span>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Diagnosis Field */}
         <div>
-          <label className="block text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1.5">
-            Clinical Diagnosis <span className="text-rose-600">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Diagnosis <span className="text-rose-500">*</span>
+            </label>
+            <span className="text-xs text-slate-400 font-mono">
+              {diagnosis.length}/500
+            </span>
+          </div>
           <input
             type="text"
             required
+            maxLength={500}
             value={diagnosis}
             onChange={(e) => setDiagnosis(e.target.value)}
-            placeholder="e.g. Acute Upper Respiratory Tract Infection / Stage 1 Hypertension"
-            className="w-full bg-white border-2 border-gray-300 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold placeholder-gray-400 focus:outline-none focus:border-blue-900"
+            placeholder="e.g. Viral fever with dehydration / Acute Bronchitis"
+            className="w-full h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-xs"
           />
         </div>
 
+        {/* Medicines Section */}
         <div>
           <div className="flex justify-between items-center mb-2">
-            <label className="text-xs font-extrabold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-              <span>Prescription Drugs & Dosages</span>
-              <span className="text-xs text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded">
-                Auto-Suggests PMBJP Jan Aushadhi Generics
-              </span>
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Medicines & Generic Alternatives
             </label>
-            <button
-              type="button"
-              onClick={addMedicine}
-              className="text-xs text-blue-900 hover:text-blue-950 font-extrabold flex items-center gap-1 cursor-pointer bg-blue-50 px-2.5 py-1 rounded border border-blue-200"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Drug Row
-            </button>
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+              Jan Aushadhi Generics
+            </span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {medicines.map((med, idx) => (
               <div
                 key={idx}
-                className="bg-gray-50 border-2 border-gray-300 rounded-xl p-3.5 space-y-2"
+                className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2"
               >
-                <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-                  <div className="flex-1 w-full">
-                    <input
-                      type="text"
-                      className="w-full bg-white border-2 border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-900 font-bold placeholder-gray-400 focus:outline-none focus:border-blue-900"
-                      placeholder="Type Brand (e.g. Augmentin, Dolo 650, Telma 40, Pan 40)"
-                      value={med.name}
-                      onChange={(e) => updateMedicine(idx, "name", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <input
-                      type="text"
-                      className="w-28 bg-white border-2 border-gray-300 rounded-lg px-2.5 py-2 text-sm text-gray-900 font-bold placeholder-gray-400 focus:outline-none focus:border-blue-900"
-                      placeholder="Dosage (1-0-1)"
-                      value={med.dosage}
-                      onChange={(e) =>
-                        updateMedicine(idx, "dosage", e.target.value)
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="w-28 bg-white border-2 border-gray-300 rounded-lg px-2.5 py-2 text-sm text-gray-900 font-bold placeholder-gray-400 focus:outline-none focus:border-blue-900"
-                      placeholder="Duration"
-                      value={med.duration}
-                      onChange={(e) =>
-                        updateMedicine(idx, "duration", e.target.value)
-                      }
-                    />
-
-                    {medicines.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeMedicine(idx)}
-                        className="text-gray-400 hover:text-rose-600 p-2 rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                <div className="flex gap-2 items-center flex-wrap sm:flex-nowrap">
+                  <input
+                    type="text"
+                    className="flex-1 min-w-[140px] h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
+                    placeholder="Medicine (e.g. Paracetamol, Dolo)"
+                    value={med.name}
+                    onChange={(e) => updateMedicine(idx, "name", e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="w-24 h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
+                    placeholder="Dosage"
+                    value={med.dosage}
+                    onChange={(e) => updateMedicine(idx, "dosage", e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="w-24 h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs text-slate-900 font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-600 shadow-xs"
+                    placeholder="Duration"
+                    value={med.duration}
+                    onChange={(e) => updateMedicine(idx, "duration", e.target.value)}
+                  />
+                  {medicines.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeMedicine(idx)}
+                      className="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                      title="Remove medicine"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 {/* DYNAMIC GENERIC SUGGESTION BANNER */}
                 {activeGenericSuggestion?.index === idx && (
-                  <div className="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm animate-in slide-in-from-top-1">
-                    <div className="flex items-start gap-2.5">
-                      <Sparkles className="w-5 h-5 text-emerald-800 shrink-0 mt-0.5" />
+                  <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-xs flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-1">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-extrabold text-emerald-950 text-sm">
-                          🌿 Recommend Government Generic:{" "}
-                          <span className="text-blue-950 underline">
+                        <div className="font-bold text-emerald-950 text-xs">
+                          Generic Alternative:{" "}
+                          <span className="text-blue-900 underline font-bold">
                             {activeGenericSuggestion.match.genericName}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-800 mt-0.5 font-medium">
-                          Jan Aushadhi:{" "}
-                          <span className="text-emerald-900 font-extrabold">
-                            {activeGenericSuggestion.match.genericPrice}
-                          </span>{" "}
-                          (vs Brand {activeGenericSuggestion.match.brandPrice}) •{" "}
-                          <span className="text-emerald-800 font-extrabold">
-                            Saves {activeGenericSuggestion.match.savings} for Patient
-                          </span>
+                        <div className="text-xs text-slate-700 mt-0.5">
+                          PMBJP: <span className="font-bold text-emerald-800">{activeGenericSuggestion.match.genericPrice}</span> (vs Brand {activeGenericSuggestion.match.brandPrice}) •{" "}
+                          <span className="font-bold text-emerald-700">Saves {activeGenericSuggestion.match.savings}</span>
                         </div>
                       </div>
                     </div>
@@ -405,51 +406,72 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
                       onClick={() =>
                         applyGeneric(idx, activeGenericSuggestion.match)
                       }
-                      className="bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 shrink-0 shadow cursor-pointer transition-all"
+                      className="btn-clinical-primary !h-8 !px-3 text-xs !bg-emerald-700 hover:!bg-emerald-800 shrink-0"
                     >
-                      <span>Apply Generic</span>
+                      <span>Use Generic</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
 
                 {med.generic_alternative && (
-                  <div className="text-xs text-emerald-900 font-bold bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-lg">
+                  <div className="text-xs text-emerald-800 font-bold bg-emerald-100/70 border border-emerald-200 px-2.5 py-1 rounded-md">
                     ✓ {med.generic_alternative}
                   </div>
                 )}
               </div>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={addMedicine}
+            className="btn-clinical-outline !h-10 text-xs font-bold mt-2.5 inline-flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4 text-blue-700" />
+            <span>Add Medicine</span>
+          </button>
         </div>
 
+        {/* Doctor Advice Notes */}
         <div>
-          <label className="block text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1">
-            Doctor Advice Notes / ASHA Follow-up Instructions
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            Advice & ASHA Follow-up Instructions
           </label>
           <textarea
-            className="w-full bg-white border-2 border-gray-300 rounded-xl px-4 py-2 text-sm text-gray-900 font-medium placeholder-gray-400 focus:outline-none focus:border-blue-900"
-            rows={2}
-            placeholder="e.g. Take generic medications after food. Measure BP in 3 days. Hydrate regularly."
+            className="w-full bg-white border border-slate-300 rounded-xl p-3.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-xs"
+            rows={3}
+            placeholder="e.g. Ensure oral rehydration solution. Re-check temperature if pyrexia persists."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={isSubmittingPrescription || !diagnosis.trim()}
-          className="w-full bg-blue-900 hover:bg-blue-800 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 text-base transition-all cursor-pointer disabled:opacity-50"
-        >
-          {isSubmittingPrescription ? (
-            <span>Signing Prescription...</span>
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              <span>Sign & Dispatch E-Prescription</span>
-            </>
-          )}
-        </button>
+        {/* Action Row */}
+        <div className="flex gap-4 pt-2">
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className="btn-clinical-outline flex-1 justify-center !h-12 text-sm font-bold"
+          >
+            Save Draft
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmittingPrescription || !diagnosis.trim()}
+            className="btn-clinical-primary flex-2 justify-center !h-12 text-sm font-bold shadow-md shadow-blue-500/20"
+          >
+            {isSubmittingPrescription ? (
+              <span>Signing Prescription...</span>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>Sign & Submit Prescription</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );

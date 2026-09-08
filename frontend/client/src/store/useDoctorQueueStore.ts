@@ -8,9 +8,11 @@ import {
 
 interface DoctorQueueState {
   queue: QueueItem[];
+  completedCases: QueueItem[];
   selectedCaseId: string | null;
   selectedCase: QueueItem | null;
   isLoadingQueue: boolean;
+  isLoadingCompleted: boolean;
   isSubmittingPrescription: boolean;
   filterDepartment: string;
   filterPriority: string;
@@ -19,6 +21,7 @@ interface DoctorQueueState {
 
   // Actions
   fetchQueue: () => Promise<void>;
+  fetchCompletedCases: () => Promise<void>;
   selectCase: (caseId: string) => void;
   setFilterDepartment: (dept: string) => void;
   setFilterPriority: (priority: string) => void;
@@ -28,9 +31,11 @@ interface DoctorQueueState {
 
 export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
   queue: [],
+  completedCases: [],
   selectedCaseId: null,
   selectedCase: null,
   isLoadingQueue: false,
+  isLoadingCompleted: false,
   isSubmittingPrescription: false,
   filterDepartment: "all",
   filterPriority: "all",
@@ -86,6 +91,17 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
     }
   },
 
+  fetchCompletedCases: async () => {
+    set({ isLoadingCompleted: true });
+    try {
+      const response = await api.get<QueueItem[]>("/api/queue/completed");
+      const items = Array.isArray(response.data) ? response.data : [];
+      set({ completedCases: items, isLoadingCompleted: false });
+    } catch (err: any) {
+      set({ isLoadingCompleted: false });
+    }
+  },
+
   selectCase: (caseId: string) => {
     const item =
       get().queue.find((c) => (c.case_id || c.id) === caseId) || null;
@@ -123,6 +139,9 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         isSubmittingPrescription: false,
         lastPrescribedResult: response.data,
       });
+
+      // Refresh completed cases
+      void get().fetchCompletedCases();
 
       return true;
     } catch (err: any) {

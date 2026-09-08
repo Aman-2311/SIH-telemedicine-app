@@ -20,15 +20,20 @@ import { useIntakeStore } from "../../store/useIntakeStore";
 import { useNetworkStore } from "../../store/useNetworkStore";
 import { IntakeResponse } from "../../utils/api";
 import { GeminiIcon } from "../../components/GeminiIcon";
+import { CompactSubmissionStepper } from "./components/CompactSubmissionStepper";
 
 interface VoiceIntakeFormProps {
   language?: "English" | "हिंदी" | "मराठी";
   onSuccessSubmitted?: (result: IntakeResponse | { offline: boolean }) => void;
+  onViewCaseDetails?: (caseId?: string) => void;
+  onGoHome?: () => void;
 }
 
 export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
   language = "English",
   onSuccessSubmitted,
+  onViewCaseDetails,
+  onGoHome,
 }) => {
   const {
     abhaId,
@@ -42,6 +47,7 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
     isListening,
     isExtracting,
     isSubmitting,
+    lastSubmissionResult,
     error,
     setAbhaId,
     setPatientName,
@@ -62,7 +68,7 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
     language === "हिंदी" ? "hi-IN" : language === "मराठी" ? "mr-IN" : "en-IN"
   );
   const [imagePreview, setImagePreview] = useState<string | null>(imageUrl || null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showStepper, setShowStepper] = useState(false);
   const [micNotice, setMicNotice] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
@@ -207,17 +213,17 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
       return;
     }
 
-    const result = await submitIntake();
-    if (result.success) {
-      setShowSuccessModal(true);
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        resetForm();
-        setImagePreview(null);
-        if (onSuccessSubmitted) {
-          onSuccessSubmitted(result.data || { offline: true });
-        }
-      }, 1500);
+    // Launch the 4-phase vertical submission progress stepper
+    setShowStepper(true);
+    void submitIntake();
+  };
+
+  const handleStepperComplete = () => {
+    setShowStepper(false);
+    resetForm();
+    setImagePreview(null);
+    if (onSuccessSubmitted) {
+      onSuccessSubmitted({ offline: !isOnline });
     }
   };
 
@@ -268,9 +274,31 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
 
       {/* ── PATIENT IDENTIFIERS CARD ── */}
       <div className="glass-panel">
-        <div className="panel-label">
-          <User className="w-3.5 h-3.5 text-teal-600" />
-          {language === "English" ? "Patient Demographic & ABHA Identity" : "मरीज विवरण एवं आभा पहचान"}
+        <div className="panel-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <User className="w-3.5 h-3.5 text-teal-600" />
+            <span>{language === "English" ? "Patient Demographic & ABHA Identity" : "मरीज विवरण एवं आभा पहचान"}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setPatientName("Savita Patil (TEST)");
+              setAbhaId("TEST-PATIENT-MH-0002");
+            }}
+            style={{
+              fontSize: "0.78rem",
+              background: "#e6fffa",
+              color: "#0d9488",
+              border: "1px solid #99f6e4",
+              borderRadius: "6px",
+              padding: "3px 8px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+            title="Click to load Savita Patil (TEST) - TEST-PATIENT-MH-0002"
+          >
+            ⚡ Test Patient (Savita Patil)
+          </button>
         </div>
         <div className="form-two-col">
           <div className="clean-input-group">
@@ -609,24 +637,37 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
         </div>
       </div>
 
-      {/* ── SUCCESS MODAL ── */}
-      {showSuccessModal && (
-        <div className="drawer-overlay" style={{ display: "grid", placeItems: "center", zIndex: 100 }}>
-          <div className="auth-card auth-card--success fade-in" style={{ padding: 36, maxWidth: 380 }}>
-            <div className="auth-success-orb">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h2 className="auth-card__heading" style={{ fontSize: "1.3rem" }}>
-              Intake Registered
-            </h2>
-            <p className="auth-card__sub" style={{ margin: "8px 0 0", fontSize: "0.88rem" }}>
-              {isOnline
-                ? "Transmitted securely to the attending Doctor's queue via ABDM gateway."
-                : "Saved securely to encrypted local cache. Will sync automatically."}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* ── COMPACT 5-STEP PROCESSING STEPPER & CONFIRMATION CARD ── */}
+      <CompactSubmissionStepper
+        isOpen={showStepper}
+        patientName={patientName || "Patient"}
+        abhaId={abhaId}
+        caseId={lastSubmissionResult?.case_id || "24"}
+        department={triagePriority === "High" ? "Cardiology / Emergency" : "General Medicine"}
+        priority={triagePriority}
+        isOffline={!isOnline}
+        onViewCase={() => {
+          setShowStepper(false);
+          resetForm();
+          setImagePreview(null);
+          if (onViewCaseDetails) {
+            onViewCaseDetails(lastSubmissionResult?.case_id || "case-mock-1");
+          } else if (onSuccessSubmitted) {
+            onSuccessSubmitted({ offline: !isOnline });
+          }
+        }}
+        onGoHome={() => {
+          setShowStepper(false);
+          resetForm();
+          setImagePreview(null);
+          if (onGoHome) {
+            onGoHome();
+          } else if (onSuccessSubmitted) {
+            onSuccessSubmitted({ offline: !isOnline });
+          }
+        }}
+        onClose={() => setShowStepper(false)}
+      />
     </div>
   );
 };

@@ -10,6 +10,7 @@ import { queueOfflineIntake } from "../db/syncManager";
 
 export interface SubmittedIntakeRecord {
   id: string;
+  case_id?: string;
   patient_name: string;
   abha_id: string;
   symptoms: string;
@@ -20,56 +21,28 @@ export interface SubmittedIntakeRecord {
   timestamp: string;
   synced: boolean;
   department?: string;
+  status?: string;
+  prescription?: {
+    doctor_id?: string;
+    doctor_name?: string;
+    diagnosis?: string;
+    medicines?: any[];
+    notes?: string;
+    prescribed_at?: string;
+  };
 }
 
-const DEFAULT_INTAKES: SubmittedIntakeRecord[] = [
-  {
-    id: "case-mock-1",
-    patient_name: "Rameshwar Rao",
-    abha_id: "91-8842-1029-3310",
-    symptoms: "छातीत तीव्र वेदना आणि श्वास घेण्यास त्रास",
-    translated_symptoms: "Acute chest pain radiating to left arm with exertional dyspnea.",
-    vitals: { bp: "145/95", temp: "99.1", pulse: "104", spo2: "94" },
-    triage_priority: "High",
-    ai_recommendation: "Immediate ECG and urgent cardiologist teleconsultation required.",
-    timestamp: "45 min ago",
-    synced: true,
-    department: "Cardiology",
-  },
-  {
-    id: "case-mock-2",
-    patient_name: "Priya Devi",
-    abha_id: "91-2309-8812-4091",
-    symptoms: "त्वचेवर लाल पुरळ आणि खाज सुटणे",
-    translated_symptoms: "Pruritic erythematous papular rash over bilateral forearms for 4 days.",
-    vitals: { bp: "118/76", temp: "98.4", pulse: "74", spo2: "99" },
-    triage_priority: "Routine",
-    ai_recommendation: "Topical soothing cream, antihistamine syrup, and routine outpatient checkup.",
-    timestamp: "1h ago",
-    synced: false,
-    department: "Dermatology",
-  },
-  {
-    id: "case-mock-3",
-    patient_name: "Santosh Shinde",
-    abha_id: "91-7612-4490-1288",
-    symptoms: "2 दिवसांपासून सतत खोकला आणि अंगदुखी",
-    translated_symptoms: "Mild productive cough with general body fatigue and low-grade pyrexia.",
-    vitals: { bp: "124/82", temp: "100.2", pulse: "82", spo2: "97" },
-    triage_priority: "Medium",
-    ai_recommendation: "Primary care review, hydration, and symptomatic antipyretic care.",
-    timestamp: "2h ago",
-    synced: true,
-    department: "General Medicine",
-  },
-];
+const DEFAULT_INTAKES: SubmittedIntakeRecord[] = [];
 
 function loadStoredIntakes(): SubmittedIntakeRecord[] {
   try {
     const raw = localStorage.getItem("sahara_submitted_intakes");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out any leftover legacy mock case IDs
+        return parsed.filter((item) => !String(item.id).startsWith("case-mock-"));
+      }
     }
   } catch (e) {
     console.error("Failed to load stored intakes", e);
@@ -260,9 +233,16 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     };
 
     // Helper to store in list
-    const saveToQueue = (synced: boolean) => {
-      const record = { ...newLocalRecord, synced };
-      const updated = [record, ...get().submittedIntakes.filter((i) => i.abha_id !== record.abha_id || i.id !== record.id)];
+    const saveToQueue = (synced: boolean, officialId?: string) => {
+      const recordId = officialId || newLocalRecord.id;
+      const record: SubmittedIntakeRecord = {
+        ...newLocalRecord,
+        id: recordId,
+        case_id: recordId,
+        synced,
+        status: "waiting",
+      };
+      const updated = [record, ...get().submittedIntakes.filter((i) => i.id !== record.id)];
       try {
         localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));
       } catch (e) {
@@ -292,7 +272,8 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
 
     try {
       const response = await api.post<IntakeResponse>("/api/intake/", payload);
-      saveToQueue(true);
+      const officialCaseId = String((response.data as any)?.case_id || (response.data as any)?.id || "");
+      saveToQueue(true, officialCaseId || undefined);
       set({
         isSubmitting: false,
         lastSubmissionResult: response.data,
@@ -329,7 +310,8 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
       const response = await api.get<{ status: string; data: any[] }>("/api/intake/asha/patients");
       if (response.data?.data && Array.isArray(response.data.data)) {
         const backendRecords: SubmittedIntakeRecord[] = response.data.data.map((r: any) => ({
-          id: r.id || `case-${Math.random()}`,
+          id: String(r.id),
+          case_id: String(r.case_id || r.id),
           patient_name: r.patient_name || "Patient",
           abha_id: r.abha_id || "--",
           symptoms: r.voice_note_text || r.translated_symptoms || "--",
@@ -340,17 +322,15 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
           timestamp: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Today",
           synced: true,
           department: r.department || "General Medicine",
+          status: r.status || "waiting",
+          prescription: r.prescription || undefined,
         }));
 
         const current = get().submittedIntakes;
-        const merged = [...current];
-        for (const b of backendRecords) {
-          if (!merged.some((m) => m.id === b.id || (m.abha_id === b.abha_id && m.timestamp === b.timestamp))) {
-            merged.push(b);
-          }
-        }
-        localStorage.setItem("sahara_submitted_intakes", JSON.stringify(merged));
-        set({ submittedIntakes: merged });
+        const unsynced = current.filter((item) => !item.synced);
+        const combined = [...unsynced, ...backendRecords];
+        localStorage.setItem("sahara_submitted_intakes", JSON.stringify(combined));
+        set({ submittedIntakes: combined });
       }
     } catch (e) {
       // Local cache already present

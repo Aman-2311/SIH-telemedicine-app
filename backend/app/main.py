@@ -1,7 +1,13 @@
+import sys
+import os
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import intake, queue, upload, facilities, auth
+from app.api import intake, queue, upload, facilities, auth, chat
 
 app = FastAPI(
     title="SIH Telemedicine Hub API",
@@ -23,6 +29,7 @@ app.include_router(intake.router, prefix="/api", tags=["Patient Intake Alias"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Doctor Dashboard"])
 app.include_router(facilities.router, prefix="/api/facilities", tags=["Facilities & Geolocation"])
 app.include_router(upload.router, prefix="/api", tags=["Media Storage"])
+app.include_router(chat.router, prefix="/api", tags=["Patient AI Chat"])
 
 @app.get("/")
 @app.get("/health")

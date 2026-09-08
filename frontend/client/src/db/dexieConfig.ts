@@ -25,17 +25,29 @@ export interface CachedFacility {
   cached_at: string;
 }
 
+export interface MedicationAdherenceRecord {
+  id?: number;
+  case_id?: string;
+  medicine_name: string;
+  slot: string;
+  scheduled_date: string;
+  taken: boolean;
+  taken_timestamp?: string;
+}
+
 export class SaharaDatabase extends Dexie {
   intakes!: Table<OfflineIntake, number>;
   cachedPrescriptions!: Table<CachedPrescription, number>;
   cachedFacilities!: Table<CachedFacility, number>;
+  medicationAdherence!: Table<MedicationAdherenceRecord, number>;
 
   constructor() {
     super("SaharaDatabase");
-    this.version(2).stores({
+    this.version(3).stores({
       intakes: "++localId, status, created_at, [status+created_at]",
       cachedPrescriptions: "++id, case_id, synced_at",
       cachedFacilities: "++id, [lat+lon], cached_at",
+      medicationAdherence: "++id, [medicine_name+slot+scheduled_date], scheduled_date",
     });
   }
 }

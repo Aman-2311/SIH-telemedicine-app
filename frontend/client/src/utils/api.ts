@@ -18,8 +18,7 @@ api.interceptors.request.use(
   (config) => {
     const token =
       localStorage.getItem("sahara_access_token") ||
-      localStorage.getItem("swasthya_access_token") ||
-      "mock_jwt_token_asha_999";
+      localStorage.getItem("swasthya_access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

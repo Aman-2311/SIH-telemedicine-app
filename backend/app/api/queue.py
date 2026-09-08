@@ -1,7 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from datetime import datetime, timezone
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List, Optional
 from app.core.database import supabase
+from app.api.intake import format_intake_record
+from app.core.security import require_doctor
 
 router = APIRouter()
 
@@ -10,122 +13,123 @@ class Medicine(BaseModel):
     name: str
     dosage: str
     duration: str
+    frequency: Optional[str] = None
+    instructions: Optional[str] = None
     generic_alternative: Optional[str] = None
 
 class PrescriptionData(BaseModel):
     doctor_id: str
+    doctor_name: Optional[str] = "Dr. Arvind Kulkarni (MD)"
     diagnosis: str
     medicines: List[Medicine]
     notes: Optional[str] = ""
 
-# Demo patients if table is clean
-demo_cases = [
-    {
-        "id": "case-mh-101",
-        "case_id": "case-mh-101",
-        "patient_name": "Rameshwar Rao",
-        "abha_id": "91-4455-8899-1023",
-        "age": 58,
-        "gender": "Male",
-        "triage_priority": "Urgent",
-        "department": "Cardiology",
-        "vitals": {
-            "bp": "165/105",
-            "temp": "99.1",
-            "pulse": "108",
-            "spo2": "94"
-        },
-        "voice_note_text": "मरीज को छाती में भारीपन है, सांस लेने में तकलीफ हो रही है और बीपी 165/105 है।",
-        "translated_symptoms": "Patient reports acute chest tightness, dyspnea on minimal exertion, and palpitation for the past 6 hours. Elevated BP 165/105 mmHg with tachycardia.",
-        "ai_red_flags": ["Stage 2 Hypertension (165/105 mmHg)", "Tachycardia (108 bpm)", "Suspected Angina / Acute Coronary Syndrome"],
-        "status": "waiting"
-    },
-    {
-        "id": "case-mh-102",
-        "case_id": "case-mh-102",
-        "patient_name": "Priya Devi",
-        "abha_id": "91-8899-2233-4455",
-        "age": 26,
-        "gender": "Female",
-        "triage_priority": "Moderate",
-        "department": "Dermatology",
-        "vitals": {
-            "bp": "118/78",
-            "temp": "101.4",
-            "pulse": "82",
-            "spo2": "99"
-        },
-        "voice_note_text": "हातावर आणि पाठीवर लाल पुरळ आले आहे, खाज सुटत आहे आणि ताप 101.4 आहे.",
-        "translated_symptoms": "Erythematous pruritic maculopapular rash on bilateral arms and upper torso with high pyrexia 101.4 °F for 3 days.",
-        "ai_red_flags": ["Pyrexia (101.4 °F)", "Spreading Dermatitis"],
-        "status": "waiting"
-    },
-    {
-        "id": "case-mh-103",
-        "case_id": "case-mh-103",
-        "patient_name": "Santosh Shinde",
-        "abha_id": "91-1122-3344-5566",
-        "age": 42,
-        "gender": "Male",
-        "triage_priority": "Routine",
-        "department": "General Medicine",
-        "vitals": {
-            "bp": "124/82",
-            "temp": "98.4",
-            "pulse": "74",
-            "spo2": "98"
-        },
-        "voice_note_text": "सामान्य डोकेदुखी आणि थकवा जाणवतो आहे, जेवण जात नाही.",
-        "translated_symptoms": "Mild generalized tension headache, fatigue, and mild anorexia for 2 days. Normal systemic vitals.",
-        "ai_red_flags": [],
-        "status": "waiting"
-    }
-]
 
-# --- 1. GET THE DOCTOR'S WAITING QUEUE ---
+# --- 1. GET THE DOCTOR'S WAITING QUEUE (Real Supabase Data, Guarded for Doctors) ---
 @router.get("")
 @router.get("/")
-async def get_patient_queue():
+async def get_patient_queue(current_user: dict = Depends(require_doctor)):
     """
-    Fetches all patients currently waiting for a doctor.
-    Automatically sorts them so High Priority cases appear first.
+    Fetches all patients currently waiting for a doctor from Supabase.
+    Automatically sorts them so High/Urgent Priority cases appear first.
+    Strictly restricted to authenticated doctors.
     """
     try:
-        response = supabase.table("patient_intakes").select("*").eq("status", "waiting").execute()
-        raw_data = response.data if response.data else demo_cases
-    except Exception:
-        raw_data = demo_cases
-        
+        response = (
+            supabase.table("patient_intakes")
+            .select("*")
+            .eq("status", "waiting")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        raw_data = response.data or []
+        formatted_data = [format_intake_record(r) for r in raw_data]
+    except Exception as e:
+        print(f"Error fetching waiting queue from Supabase: {e}")
+        formatted_data = []
+
     priority_map = {"urgent": 1, "high": 1, "moderate": 2, "medium": 2, "routine": 3, "low": 3}
     sorted_data = sorted(
-        raw_data, 
+        formatted_data,
         key=lambda x: priority_map.get(str(x.get("triage_priority", "Routine")).lower(), 4)
     )
-    
     return sorted_data
 
 
-# --- 2. SUBMIT E-PRESCRIPTION & CLOSE CASE ---
+# --- 2. GET COMPLETED / TREATED CASES (Real Supabase Data, Guarded for Doctors) ---
+@router.get("/completed")
+async def get_completed_cases(current_user: dict = Depends(require_doctor)):
+    """
+    Fetches all treated/completed patient cases from Supabase.
+    Enables accurate calculation of 'Treated Today' based on prescription timestamps.
+    """
+    try:
+        response = (
+            supabase.table("patient_intakes")
+            .select("*")
+            .eq("status", "completed")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        raw_data = response.data or []
+        return [format_intake_record(r) for r in raw_data]
+    except Exception as e:
+        print(f"Error fetching completed cases from Supabase: {e}")
+        return []
+
+
+# --- 3. SUBMIT E-PRESCRIPTION & CLOSE CASE ---
 @router.post("/{case_id}/prescribe")
-async def submit_prescription(case_id: str, prescription: PrescriptionData):
+async def submit_prescription(
+    case_id: str,
+    prescription: PrescriptionData,
+    current_user: dict = Depends(require_doctor)
+):
     """
-    Saves the doctor's prescription to the patient's record,
-    assigns the doctor's ID, and marks the case as completed.
+    Saves the doctor's prescription to the patient's record in Supabase,
+    and marks the case as completed.
     """
+    prescription_dict = prescription.model_dump()
+    prescription_dict["prescribed_at"] = datetime.now(timezone.utc).isoformat()
+    prescription_dict["prescribed_by"] = current_user.get("name", "Dr. Arvind Kulkarni (MD)")
+
     record_update = {
         "status": "completed",
-        "assigned_doctor_id": prescription.doctor_id,
-        "prescription": prescription.model_dump()
+        "prescription": prescription_dict
     }
-    
+
     try:
-        response = supabase.table("patient_intakes").update(record_update).eq("id", case_id).execute()
-        data = response.data[0] if response.data else record_update
-    except Exception:
-        data = record_update
-        
-    return {
-        "status": "success",
-        "message": "Prescription successfully saved. Case is now closed.",
-        "data": data
-    }
+        query_id = int(case_id) if case_id.isdigit() else case_id
+        response = (
+            supabase.table("patient_intakes")
+            .update(record_update)
+            .eq("id", query_id)
+            .execute()
+        )
+
+        # Fallback to query by abha_id if case_id didn't match row id
+        if not response.data:
+            response = (
+                supabase.table("patient_intakes")
+                .update(record_update)
+                .eq("abha_id", case_id)
+                .execute()
+            )
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail=f"Case {case_id} not found in database.")
+
+        saved_row = response.data[0]
+        formatted = format_intake_record(saved_row)
+
+        return {
+            "status": "success",
+            "message": "Prescription successfully saved. Case is now closed.",
+            "data": formatted,
+            "case_id": formatted["id"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error saving prescription in Supabase: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

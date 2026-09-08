@@ -135,3 +135,38 @@ def extract_form_data_from_voice(spoken_text: str) -> dict:
         "triage_priority": priority,
         "ai_recommendation": "Evaluate the patient for acute febrile illness, administer antipyretics, and monitor vitals."
     }
+
+def patient_chat_assistant(query: str, language_hint: str = "English") -> str:
+    """Answers patient health questions with Gemini 3.7 Flash."""
+    if not client or not api_key:
+        return "I am here to help you navigate your prescriptions, check health guidance, and find nearby healthcare facilities."
+    
+    system_instruction = (
+        "You are SAHARA Health Companion, a warm, helpful, empathetic telemedicine AI assistant "
+        "for patients and families in India. "
+        "Answer patient questions clearly, accurately, and concisely (2 to 4 sentences max unless detailed steps are needed), "
+        "in simple, easy-to-understand language. You fluently understand English, Hindi, and Marathi. "
+        "If the patient asks in Hindi or Marathi, respond warmly in the same language. "
+        "Always advise patients to consult a doctor or local ASHA worker for official prescriptions and diagnosis. "
+        "For emergency red flags (severe chest pain, difficulty breathing, sudden paralysis), urge immediate hospital visit."
+    )
+    
+    prompt = f"{system_instruction}\n\nPatient question: {query}"
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-3.7-flash',
+            contents=prompt,
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"Gemini 3.7 Chat Error: {e}, attempting 3.6 fallback")
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=prompt,
+            )
+            return response.text.strip()
+        except Exception as e2:
+            print(f"Gemini Chat Fallback Error: {e2}")
+            return "I am having trouble connecting to the medical AI network right now. Please consult your local Primary Health Centre (PHC) or ASHA worker."

@@ -37,14 +37,12 @@ interface AuthState {
 const getStoredToken = () =>
   localStorage.getItem("sahara_access_token") ||
   localStorage.getItem("swasthya_access_token") ||
-  "mock_jwt_token_asha_999";
+  null;
 
 const getStoredUser = (): UserInfo | null => {
   try {
     const raw = localStorage.getItem("sahara_user");
-    return raw
-      ? JSON.parse(raw)
-      : { abha_id: "ASHA-MH-7001", role: "asha", full_name: "Sunita Devi (ASHA)" };
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
@@ -57,7 +55,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: initialToken,
   user: initialUser,
   role: initialUser?.role || "asha",
-  isAuthenticated: !!initialToken,
+  isAuthenticated: !!initialToken && !!initialUser,
   isLoading: false,
   error: null,
 
@@ -87,15 +85,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await api.post<AuthResponse>("/api/auth/login", payload);
       const token =
         response.data.access_token || `mock_jwt_token_${payload.role}_999`;
+      const defaultAbha =
+        payload.abha_id ||
+        (payload.role === "asha"
+          ? "TEST-ASHA-MH-0001"
+          : payload.role === "patient"
+          ? "TEST-PATIENT-MH-0002"
+          : "DOC-MH-7001");
+
       const user: UserInfo = {
-        abha_id: payload.abha_id,
+        abha_id: defaultAbha,
         role: payload.role,
         full_name:
           payload.role === "asha"
-            ? "Sunita Devi (ASHA Worker)"
+            ? "Sunita Patil (TEST)"
             : payload.role === "doctor"
             ? "Dr. Arvind Kulkarni (MD)"
-            : "Savita Patil (Citizen)",
+            : "Savita Patil (TEST)",
+        phone_number:
+          payload.role === "asha"
+            ? "+91 90000 10001"
+            : payload.role === "patient"
+            ? "+91 90000 10002"
+            : "+91 90000 10003",
       };
 
       localStorage.setItem("sahara_access_token", token);
@@ -112,15 +124,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err: any) {
       // Automatic fallback for 100% demo resilience
       const fallbackToken = `mock_jwt_token_${payload.role}_999`;
+      const defaultAbha =
+        payload.abha_id ||
+        (payload.role === "asha"
+          ? "TEST-ASHA-MH-0001"
+          : payload.role === "patient"
+          ? "TEST-PATIENT-MH-0002"
+          : "DOC-MH-7001");
+
       const user: UserInfo = {
-        abha_id: payload.abha_id || "ABHA-DEMO-001",
+        abha_id: defaultAbha,
         role: payload.role,
         full_name:
           payload.role === "asha"
-            ? "Sunita Devi (ASHA Worker)"
+            ? "Sunita Patil (TEST)"
             : payload.role === "doctor"
             ? "Dr. Arvind Kulkarni (MD)"
-            : "Savita Patil (Citizen)",
+            : "Savita Patil (TEST)",
+        phone_number:
+          payload.role === "asha"
+            ? "+91 90000 10001"
+            : payload.role === "patient"
+            ? "+91 90000 10002"
+            : "+91 90000 10003",
       };
 
       localStorage.setItem("sahara_access_token", fallbackToken);

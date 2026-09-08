@@ -76,7 +76,7 @@ export const SecurityPage: React.FC<SecurityPageProps> = ({ language = "English"
     },
   }[language];
 
-  const ashaId = user?.id ? `ASHA-IN-${user.id.slice(0, 8).toUpperCase()}` : "ASHA-KA-BLR-042";
+  const ashaId = user?.abha_id ? `ASHA-IN-${user.abha_id.slice(0, 8).toUpperCase()}` : "ASHA-KA-BLR-042";
 
   return (
     <div className="security-page-container fade-in">
