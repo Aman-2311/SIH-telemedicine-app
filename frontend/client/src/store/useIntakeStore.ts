@@ -21,11 +21,12 @@ export interface SubmittedIntakeRecord {
   timestamp: string;
   synced: boolean;
   department?: string;
-  status?: string;
   consultation?: {
+    doctor_id?: string;
     assigned_doctor?: string;
     doctor_speciality?: string;
     facility?: string;
+    facility_address?: string;
     scheduled_date?: string;
     scheduled_time?: string;
     appointment_status?: string;
@@ -33,6 +34,7 @@ export interface SubmittedIntakeRecord {
   assigned_doctor?: string;
   doctor_speciality?: string;
   facility?: string;
+  facility_address?: string;
   scheduled_date?: string;
   scheduled_time?: string;
   appointment_status?: string;
@@ -93,8 +95,18 @@ interface IntakeState {
   setIsListening: (isListening: boolean) => void;
   extractVoiceAI: (text: string) => Promise<ExtractVoiceResponse>;
   submitIntake: () => Promise<{ success: boolean; offline: boolean; data?: IntakeResponse }>;
-  syncPendingIntake: (id: string) => Promise<{ success: boolean; message: string }>;
-  fetchRecentIntakes: () => Promise<void>;
+  scheduleConsultation: (
+    caseId: string,
+    consultation: {
+      doctor_id?: string;
+      assigned_doctor: string;
+      doctor_speciality: string;
+      facility: string;
+      facility_address?: string;
+      scheduled_date: string;
+      scheduled_time: string;
+    }
+  ) => Promise<{ success: boolean; data?: any }>;
   resetForm: () => void;
   clearError: () => void;
 }
@@ -466,6 +478,74 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
       }
     } catch (e) {
       // Local cache already present
+    }
+  },
+
+  scheduleConsultation: async (caseId, consultation) => {
+    try {
+      const payload = {
+        ...consultation,
+        appointment_status: "scheduled",
+      };
+      const res = await api.post(`/api/${caseId}/schedule`, payload);
+      const updatedData = res.data?.data || res.data?.consultation || payload;
+
+      const current = get().submittedIntakes;
+      const updated = current.map((item) => {
+        if (String(item.case_id || item.id) === String(caseId)) {
+          return {
+            ...item,
+            status: "scheduled",
+            appointment_status: "scheduled",
+            assigned_doctor: consultation.assigned_doctor,
+            doctor_speciality: consultation.doctor_speciality,
+            facility: consultation.facility,
+            facility_address: consultation.facility_address,
+            scheduled_date: consultation.scheduled_date,
+            scheduled_time: consultation.scheduled_time,
+            consultation: {
+              ...item.consultation,
+              ...consultation,
+              appointment_status: "scheduled",
+            },
+          };
+        }
+        return item;
+      });
+      try {
+        localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));
+      } catch {}
+      set({ submittedIntakes: updated });
+      return { success: true, data: updatedData };
+    } catch (err: any) {
+      console.warn("Server schedule endpoint error, saving locally", err?.message);
+      const current = get().submittedIntakes;
+      const updated = current.map((item) => {
+        if (String(item.case_id || item.id) === String(caseId)) {
+          return {
+            ...item,
+            status: "scheduled",
+            appointment_status: "scheduled",
+            assigned_doctor: consultation.assigned_doctor,
+            doctor_speciality: consultation.doctor_speciality,
+            facility: consultation.facility,
+            facility_address: consultation.facility_address,
+            scheduled_date: consultation.scheduled_date,
+            scheduled_time: consultation.scheduled_time,
+            consultation: {
+              ...item.consultation,
+              ...consultation,
+              appointment_status: "scheduled",
+            },
+          };
+        }
+        return item;
+      });
+      try {
+        localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));
+      } catch {}
+      set({ submittedIntakes: updated });
+      return { success: true };
     }
   },
 

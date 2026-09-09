@@ -127,24 +127,59 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
     const abha = user?.abha_id || "TEST-PATIENT-MH-0002";
     if (!abha) return;
     try {
-      const res = await api.get<{ status: string; data: any[]; latest: any }>(
-        `/api/intake/patient/${abha}`
-      );
-      const records = res.data?.data || [];
+      let serverRecords: any[] = [];
+      let latestServerRx: any = null;
+      try {
+        const res = await api.get<{ status: string; data: any[]; latest: any }>(
+          `/api/intake/patient/${abha}`
+        );
+        serverRecords = res.data?.data || [];
+        latestServerRx = res.data?.latest;
+      } catch (err) {
+        console.warn("Server patient fetch failed, falling back to local storage:", err);
+      }
+
+      // Merge with local storage intakes for immediate offline/online sync
+      let localRecords: any[] = [];
+      try {
+        const stored = localStorage.getItem("sahara_submitted_intakes");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            localRecords = parsed.filter((p: any) => !abha || p.abha_id === abha);
+          }
+        }
+      } catch {}
+
+      const seen = new Set<string>();
+      const records: any[] = [];
+      for (const item of [...serverRecords, ...localRecords]) {
+        const id = String(item.case_id || item.id);
+        if (!seen.has(id)) {
+          seen.add(id);
+          records.push(item);
+        }
+      }
       setPatientHistory(records);
 
-      const latestRxRecord = res.data?.latest;
+      // Find latest record with confirmed prescription
+      const latestRxRecord =
+        (latestServerRx && latestServerRx.prescription && latestServerRx.prescription.diagnosis)
+          ? latestServerRx
+          : records.find((r) => r.prescription && r.prescription.diagnosis);
+
       if (latestRxRecord && latestRxRecord.prescription && latestRxRecord.prescription.diagnosis) {
         const rx = latestRxRecord.prescription;
-        const consult = latestRxRecord.consultation || {};
+        const consult = latestRxRecord.consultation || latestRxRecord.vitals?.consultation || {};
         setActivePrescription({
-          id: latestRxRecord.id,
-          doctor_name: rx.doctor_name || consult.assigned_doctor || latestRxRecord.assigned_doctor || "Dr. Arvind Kulkarni (MD)",
+          id: latestRxRecord.case_id || latestRxRecord.id,
+          doctor_name: rx.doctor_name || rx.prescribed_by || consult.assigned_doctor || latestRxRecord.assigned_doctor || "Attending Specialist",
           speciality: consult.doctor_speciality || latestRxRecord.doctor_speciality || latestRxRecord.department || "General Medicine",
-          hospital: consult.facility || latestRxRecord.facility || "District Telemedicine Centre, Wardha",
-          scheduled_date: consult.scheduled_date || latestRxRecord.scheduled_date || "Today",
-          scheduled_time: consult.scheduled_time || latestRxRecord.scheduled_time || "10:30 AM",
-          appointment_status: "Prescription Ready / Complete",
+          hospital: consult.facility || latestRxRecord.facility || "District Civil Hospital & Telemedicine Hub",
+          facility_address: consult.facility_address || latestRxRecord.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001",
+          scheduled_date: consult.scheduled_date || latestRxRecord.scheduled_date || null,
+          scheduled_time: consult.scheduled_time || latestRxRecord.scheduled_time || null,
+          appointment_status: "Consultation Completed",
           diagnosis: rx.diagnosis,
           date: rx.prescribed_at
             ? new Date(rx.prescribed_at).toLocaleDateString([], {
@@ -293,8 +328,9 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
         },
       ];
     } else if (lower.includes("prescription") || lower.includes("medicine")) {
-      reply =
-        "Your latest prescription from Dr. Arvind Kulkarni (Cardiology) includes Telmisartan 40mg (30 days) and ORS Electrolyte (5 days). You can save ₹131 by choosing Jan Aushadhi generic alternatives.";
+      reply = activePrescription
+        ? `Your latest prescription from ${activePrescription.doctor_name} (${activePrescription.speciality}) for ${activePrescription.diagnosis} is active. You can view your medicines and Jan Aushadhi generic savings in the Prescriptions tab.`
+        : "You currently have no active prescriptions. Your recorded vitals and clinical symptoms are securely logged with the specialist.";
     } else if (lower.includes("hospital") || lower.includes("emergency") || lower.includes("doctor")) {
       reply =
         "District Civil Hospital is 2.9 km away with 24/7 Emergency & General Care. Primary Health Centre (PHC) is 1.4 km away.";
@@ -1094,11 +1130,21 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                       </div>
                       <div className="patient-activity-content">
                         <h4 className="patient-activity-title">
-                          Prescription received from Dr. Arvind Kulkarni
+                          {activePrescription
+                            ? `Prescription issued by ${activePrescription.doctor_name}`
+                            : patientHistory[0]?.assigned_doctor
+                            ? `Specialist assigned: ${patientHistory[0].assigned_doctor}`
+                            : "Patient intake recorded by ASHA"}
                         </h4>
-                        <p className="patient-activity-sub">Cardiology consultation</p>
+                        <p className="patient-activity-sub">
+                          {activePrescription
+                            ? `${activePrescription.speciality} • ${activePrescription.diagnosis}`
+                            : `${patientHistory[0]?.department || "General Medicine"} clinical triage`}
+                        </p>
                       </div>
-                      <div className="patient-activity-timestamp">Today, 10:45 AM</div>
+                      <div className="patient-activity-timestamp">
+                        {activePrescription ? activePrescription.date : "Today"}
+                      </div>
                     </div>
 
                     <div className="patient-activity-row">
@@ -1106,12 +1152,22 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
                       <div className="patient-activity-content">
-                        <h4 className="patient-activity-title">Consultation completed</h4>
+                        <h4 className="patient-activity-title">
+                          {activePrescription
+                            ? "Consultation completed"
+                            : patientHistory[0]?.scheduled_date
+                            ? "Consultation scheduled"
+                            : "Vitals & symptoms queued"}
+                        </h4>
                         <p className="patient-activity-sub">
-                          Telemedicine Node — Dr. Arvind Kulkarni
+                          {activePrescription
+                            ? `${activePrescription.hospital} — ${activePrescription.doctor_name}`
+                            : patientHistory[0]?.scheduled_date
+                            ? `${patientHistory[0].facility || "Telemedicine Node"} — ${patientHistory[0].scheduled_date} at ${patientHistory[0].scheduled_time}`
+                            : "Transferred to specialist workstation"}
                         </p>
                       </div>
-                      <div className="patient-activity-timestamp">Today, 10:40 AM</div>
+                      <div className="patient-activity-timestamp">Today</div>
                     </div>
 
                     <div className="patient-activity-row">
@@ -1209,21 +1265,24 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                     <div className="lg:col-span-2 patient-rx-card">
                       <div className="patient-rx-doctor-row">
                         <div>
+                          <div className="text-[11px] font-mono font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-md inline-block mb-1.5">
+                            Case #{String(activePrescription.id).replace("case-", "").slice(0, 8)}
+                          </div>
                           <div className="patient-rx-doctor-name">
                             {activePrescription.doctor_name}
                           </div>
                           <div className="patient-rx-hospital">
-                            {activePrescription.hospital} • Consultation: {activePrescription.date}
+                            {activePrescription.hospital} • {activePrescription.date}
                           </div>
                         </div>
                         <span className="patient-verified-badge">
                           <Check className="w-3.5 h-3.5" />
-                          Verified
+                          Consultation Completed
                         </span>
                       </div>
 
                       {/* Structured Consultation Metadata */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                         <div>
                           <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
                           <span className="font-bold text-slate-800">{activePrescription.doctor_name}</span>
@@ -1233,16 +1292,23 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                           <span className="font-bold text-slate-800">{activePrescription.speciality || "General Medicine"}</span>
                         </div>
                         <div>
-                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital</span>
+                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Facility</span>
                           <span className="font-bold text-slate-800 truncate block">{activePrescription.hospital}</span>
                         </div>
                         <div>
                           <span className="text-slate-500 font-bold uppercase text-[10px] block">Status</span>
                           <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block text-[11px]">
-                            {activePrescription.appointment_status || "Prescription Ready"}
+                            {activePrescription.appointment_status || "Completed"}
                           </span>
                         </div>
                       </div>
+
+                      {activePrescription.facility_address && (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-4 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>Facility Location: <strong>{activePrescription.facility_address}</strong></span>
+                        </div>
+                      )}
 
                       <div className="mb-4">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
@@ -1341,46 +1407,179 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                     </div>
                   ) : (
                     patientHistory.length > 0 ? (
-                      <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
-                              <Clock className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h3 className="text-sm font-bold text-slate-900">Consultation in Progress</h3>
-                              <p className="text-xs text-slate-500">Case #{patientHistory[0].id || "1"}</p>
-                            </div>
-                          </div>
-                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                            {patientHistory[0].status === "waiting" ? "Waiting for Doctor" : "Scheduled"}
-                          </span>
-                        </div>
+                      (() => {
+                        const currentCase = patientHistory[0];
+                        const isSlotConfirmed = Boolean(currentCase.scheduled_date && currentCase.scheduled_time);
+                        const isDoctorAssigned = Boolean(currentCase.assigned_doctor) && !isSlotConfirmed;
 
-                        {/* Structured Consultation Details */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                          <div>
-                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
-                            <span className="font-bold text-slate-800">{patientHistory[0].assigned_doctor || "Dr. Arvind Kulkarni (MD)"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
-                            <span className="font-bold text-slate-800">{patientHistory[0].doctor_speciality || patientHistory[0].department || "General Medicine"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital</span>
-                            <span className="font-bold text-slate-800">{patientHistory[0].facility || "District Telemedicine Centre"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Schedule</span>
-                            <span className="font-bold text-slate-800">{patientHistory[0].scheduled_date || "Today • Slot #2"}</span>
-                          </div>
-                        </div>
+                        if (isSlotConfirmed) {
+                          return (
+                            <div className="lg:col-span-2 bg-gradient-to-br from-sky-50/80 to-blue-50/60 rounded-2xl p-6 border-2 border-sky-200 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between pb-3 border-b border-sky-200 flex-wrap gap-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+                                    <Calendar className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] font-black text-sky-800 uppercase tracking-wider">
+                                      Specialist Consultation
+                                    </div>
+                                    <h3 className="text-base font-black text-slate-900">
+                                      Consultation Scheduled
+                                    </h3>
+                                    <p className="text-xs text-slate-500 font-mono">
+                                      Case #{String(currentCase.case_id || currentCase.id).replace("case-", "").slice(0, 8)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+                                  Confirmed & Scheduled
+                                </span>
+                              </div>
 
-                        <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 leading-relaxed">
-                          Your clinical vitals and symptoms are queued with the specialist. Once teleconsultation review is completed, the digital e-prescription and nearest Jan Aushadhi generic pharmacy directions will unlock here.
-                        </div>
-                      </div>
+                              {/* Structured Consultation Details */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-4 rounded-xl border border-sky-200 shadow-xs">
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
+                                  <span className="font-extrabold text-slate-900 text-sm block">{currentCase.assigned_doctor}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
+                                  <span className="font-bold text-slate-800 block">{currentCase.doctor_speciality || currentCase.department || "General Medicine"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Facility / Centre</span>
+                                  <span className="font-bold text-slate-800 block truncate">{currentCase.facility || "District Civil Hospital"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Schedule</span>
+                                  <span className="font-bold text-sky-700 block">{currentCase.scheduled_date} • {currentCase.scheduled_time}</span>
+                                </div>
+                              </div>
+
+                              {currentCase.facility_address && (
+                                <div className="flex items-center gap-2 text-xs text-slate-600 bg-white/80 p-2.5 rounded-lg border border-sky-100">
+                                  <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                                  <span>Location: <strong>{currentCase.facility_address}</strong></span>
+                                </div>
+                              )}
+
+                              <div className="p-4 bg-white border border-sky-200 rounded-xl text-xs text-sky-950 leading-relaxed flex items-center justify-between flex-wrap gap-3">
+                                <div className="max-w-md">
+                                  <span className="font-bold block text-sky-900 mb-0.5">Teleconsultation Appointment Confirmed</span>
+                                  Your clinical vitals and symptoms are queued with the specialist. The doctor will connect with you at the scheduled time. Once consultation is completed, your e-prescription and Jan Aushadhi directions will unlock here.
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    className="btn-clinical-primary text-xs py-2 px-3.5 flex items-center gap-1.5 !bg-sky-700 hover:!bg-sky-800"
+                                    onClick={() => setActiveTab("map")}
+                                  >
+                                    <MapPin className="w-3.5 h-3.5" />
+                                    <span>View on Map / Directions</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (isDoctorAssigned) {
+                          return (
+                            <div className="lg:col-span-2 bg-gradient-to-br from-orange-50/80 to-amber-50/60 rounded-2xl p-6 border-2 border-orange-200 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between pb-3 border-b border-orange-200 flex-wrap gap-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-bold">
+                                    <Clock className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] font-black text-orange-800 uppercase tracking-wider">
+                                      Specialist Consultation
+                                    </div>
+                                    <h3 className="text-base font-black text-slate-900">
+                                      Awaiting Consultation Slot
+                                    </h3>
+                                    <p className="text-xs text-slate-500 font-mono">
+                                      Case #{String(currentCase.case_id || currentCase.id).replace("case-", "").slice(0, 8)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                                  Awaiting Slot Confirmation
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-4 rounded-xl border border-orange-200 shadow-xs">
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
+                                  <span className="font-extrabold text-slate-900 text-sm block">{currentCase.assigned_doctor}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
+                                  <span className="font-bold text-slate-800 block">{currentCase.doctor_speciality || currentCase.department || "General Medicine"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Facility / Centre</span>
+                                  <span className="font-bold text-slate-800 block truncate">{currentCase.facility || "District Telemedicine Centre"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Schedule</span>
+                                  <span className="font-bold text-orange-700 block">Pending Slot</span>
+                                </div>
+                              </div>
+
+                              <div className="p-3.5 bg-white border border-orange-200 rounded-xl text-xs text-orange-950 leading-relaxed">
+                                Specialist doctor has been assigned to your case. The exact teleconsultation time slot is being finalized and will be confirmed shortly.
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="lg:col-span-2 bg-gradient-to-br from-amber-50/80 to-yellow-50/60 rounded-2xl p-6 border-2 border-amber-200 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-amber-200 flex-wrap gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                                  <Clock className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <div className="text-[10px] font-black text-amber-800 uppercase tracking-wider">
+                                    Specialist Assignment
+                                  </div>
+                                  <h3 className="text-base font-black text-slate-900">
+                                    Waiting for Specialist Assignment
+                                  </h3>
+                                  <p className="text-xs text-slate-500 font-mono">
+                                    Case #{String(currentCase.case_id || currentCase.id).replace("case-", "").slice(0, 8)}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                                Waiting for Specialist
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-xl border border-amber-200 shadow-xs">
+                              <div>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Department</span>
+                                <span className="font-extrabold text-amber-950 text-sm block">{currentCase.department || "General Medicine"}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Triage Priority</span>
+                                <span className="font-bold text-slate-800 block">{currentCase.triage_priority || "Routine"}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Status</span>
+                                <span className="font-bold text-amber-700 block">Awaiting Specialist</span>
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 bg-white border border-amber-200 rounded-xl text-xs text-amber-950 leading-relaxed">
+                              We'll show the assigned specialist and consultation time here once confirmed. Your health vitals and intake details have been securely recorded.
+                            </div>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <div className="lg:col-span-2 bg-white rounded-2xl p-8 border border-slate-200 text-center flex flex-col items-center justify-center min-h-[300px]">
                         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-400">
@@ -1415,9 +1614,24 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-amber-100 text-amber-800"
                               }`}>
-                              {item.status === "completed" ? "Prescribed" : "In Review"}
+                              {item.status === "completed" ? "Prescribed" : item.status === "scheduled" ? "Scheduled" : "In Review"}
                             </span>
                           </div>
+
+                          {/* Specialist & Appointment info if present */}
+                          {item.assigned_doctor && (
+                            <div className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                              <div>
+                                Specialist: <span className="font-bold text-slate-800">{item.assigned_doctor}</span> ({item.doctor_speciality || item.department || "General Medicine"})
+                              </div>
+                              {item.scheduled_date && (
+                                <span className="text-slate-500 font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded">
+                                  {item.scheduled_date} {item.scheduled_time || ""}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                           {item.prescription?.medicines && item.prescription.medicines.length > 0 && (
                             <div className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-100">
                               <span className="font-semibold text-slate-700">Prescribed: </span>
@@ -1868,12 +2082,14 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-900 text-sm">
-                            Prescription received
+                            {activePrescription ? "Prescription received" : "Clinical intake active"}
                           </span>
-                          <span className="text-xs text-slate-400">10:45 AM</span>
+                          <span className="text-xs text-slate-400">{activePrescription ? activePrescription.date : "Today"}</span>
                         </div>
                         <p className="text-xs text-slate-600 mt-0.5">
-                          Your new prescription from Dr. Arvind Kulkarni is now available.
+                          {activePrescription
+                            ? `Your prescription from ${activePrescription.doctor_name} is available in your portal.`
+                            : "Your clinical case is queued with the specialist medical team."}
                         </p>
                       </div>
                     </div>
@@ -1885,12 +2101,20 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-900 text-sm">
-                            Consultation completed
+                            {activePrescription
+                              ? "Consultation completed"
+                              : patientHistory[0]?.scheduled_date
+                              ? "Consultation scheduled"
+                              : "Intake recorded"}
                           </span>
-                          <span className="text-xs text-slate-400">10:40 AM</span>
+                          <span className="text-xs text-slate-400">Today</span>
                         </div>
                         <p className="text-xs text-slate-600 mt-0.5">
-                          Your teleconsultation with Dr. Arvind Kulkarni was completed successfully.
+                          {activePrescription
+                            ? `Teleconsultation with ${activePrescription.doctor_name} was completed successfully.`
+                            : patientHistory[0]?.scheduled_date
+                            ? `Teleconsultation scheduled with ${patientHistory[0].assigned_doctor || "Specialist"} for ${patientHistory[0].scheduled_date} at ${patientHistory[0].scheduled_time}.`
+                            : "Your health records have been safely recorded by your ASHA worker."}
                         </p>
                       </div>
                     </div>
@@ -2181,7 +2405,11 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                     <div>
                       <div className="font-bold text-slate-900 text-sm">Active Prescription</div>
                       <div className="text-xs text-slate-500">
-                        Dr. Arvind Kulkarni • Stage 1 Hypertension
+                        {activePrescription
+                          ? `${activePrescription.doctor_name} • ${activePrescription.diagnosis}`
+                          : patientHistory[0]?.scheduled_date
+                          ? `Scheduled: ${patientHistory[0].assigned_doctor || "Specialist"} (${patientHistory[0].scheduled_date})`
+                          : "No active prescription on record"}
                       </div>
                     </div>
                   </div>

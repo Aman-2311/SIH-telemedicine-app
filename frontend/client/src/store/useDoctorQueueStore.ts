@@ -78,7 +78,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           localItems = parsed
-            .filter((p: any) => p.status === "waiting" || !p.status)
+            .filter((p: any) => p.status === "waiting" || p.status === "scheduled" || !p.status)
             .map((p: any) => ({
               id: String(p.id || p.case_id || Date.now()),
               case_id: String(p.case_id || p.id || Date.now()),
@@ -93,7 +93,14 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
               translated_symptoms: p.translated_symptoms || p.symptoms || "",
               ai_red_flags: p.ai_red_flags || ["Clinical evaluation recommended"],
               created_at: p.created_at || new Date().toISOString(),
-              status: "waiting",
+              status: p.status || "waiting",
+              assigned_doctor: p.assigned_doctor || p.vitals?.consultation?.assigned_doctor,
+              doctor_speciality: p.doctor_speciality || p.vitals?.consultation?.doctor_speciality,
+              facility: p.facility || p.vitals?.consultation?.facility,
+              facility_address: p.facility_address || p.vitals?.consultation?.facility_address,
+              scheduled_date: p.scheduled_date || p.vitals?.consultation?.scheduled_date,
+              scheduled_time: p.scheduled_time || p.vitals?.consultation?.scheduled_time,
+              appointment_status: p.appointment_status || p.vitals?.consultation?.appointment_status,
             }));
         }
       }
@@ -250,7 +257,20 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         if (Array.isArray(parsed)) {
           const updated = parsed.map((p: any) =>
             String(p.id || p.case_id) === caseId
-              ? { ...p, status: "completed", diagnosis: payload.diagnosis, medicines: payload.medicines }
+              ? {
+                  ...p,
+                  status: "completed",
+                  appointment_status: "completed",
+                  diagnosis: payload.diagnosis,
+                  medicines: payload.medicines,
+                  prescription: {
+                    diagnosis: payload.diagnosis,
+                    medicines: payload.medicines,
+                    doctor_id: payload.doctor_id,
+                    prescribed_at: new Date().toISOString(),
+                    prescribed_by: p.assigned_doctor || "Specialist Doctor",
+                  },
+                }
               : p
           );
           localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));

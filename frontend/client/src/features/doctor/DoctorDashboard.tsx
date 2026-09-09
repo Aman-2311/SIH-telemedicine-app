@@ -1391,6 +1391,32 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                 caseId={currentCase.case_id || currentCase.id}
               />
 
+              {/* Scheduled Teleconsultation Banner if scheduled */}
+              {(currentCase.scheduled_date || currentCase.vitals?.consultation?.scheduled_date) && (
+                <div className="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 flex items-center justify-between flex-wrap gap-4 slide-up">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-sky-800 uppercase tracking-wider">
+                        Confirmed Specialist Teleconsultation Slot
+                      </div>
+                      <div className="text-sm font-extrabold text-slate-900 mt-0.5">
+                        {currentCase.scheduled_date || currentCase.vitals?.consultation?.scheduled_date} at {currentCase.scheduled_time || currentCase.vitals?.consultation?.scheduled_time || "10:30 AM"}
+                      </div>
+                      <div className="text-xs text-slate-600 mt-0.5">
+                        Specialist: <strong>{currentCase.assigned_doctor || currentCase.vitals?.consultation?.assigned_doctor || "Attending Specialist"}</strong> • Facility: <strong>{currentCase.facility || currentCase.vitals?.consultation?.facility || "District Telemedicine Hub"}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-sky-100 text-sky-800 border border-sky-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-sky-600" />
+                    Consultation Confirmed
+                  </span>
+                </div>
+              )}
+
               {/* ─── 2-COLUMN CLINICAL WORKSPACE GRID ─── */}
               <div className="clinical-workspace-grid">
                 {/* ── LEFT COLUMN: Clinical Information & Field Context ── */}

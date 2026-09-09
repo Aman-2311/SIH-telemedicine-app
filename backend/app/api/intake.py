@@ -48,7 +48,23 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     consultation = vitals_raw.get("consultation") or {}
     
     status_raw = r.get("status") or "waiting"
-    appointment_status = "completed" if status_raw == "completed" or (prescription and prescription.get("diagnosis")) else consultation.get("appointment_status") or status_raw
+    
+    # Calculate exact appointment_status
+    if status_raw == "completed" or (prescription and prescription.get("diagnosis")):
+        appointment_status = "completed"
+    elif consultation.get("scheduled_date") and consultation.get("scheduled_time"):
+        appointment_status = "scheduled"
+    elif consultation.get("assigned_doctor"):
+        appointment_status = "awaiting_slot"
+    else:
+        appointment_status = "waiting"
+
+    assigned_doctor = consultation.get("assigned_doctor") or (prescription.get("doctor_name") or prescription.get("prescribed_by") if prescription else None)
+    doctor_speciality = consultation.get("doctor_speciality") or (r.get("department") if assigned_doctor else None)
+    facility = consultation.get("facility") or None
+    facility_address = consultation.get("facility_address") or None
+    scheduled_date = consultation.get("scheduled_date") or None
+    scheduled_time = consultation.get("scheduled_time") or None
 
     return {
         "id": cid,
@@ -67,11 +83,12 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
         "status": status_raw,
         "prescription": prescription,
         "consultation": consultation,
-        "assigned_doctor": consultation.get("assigned_doctor") or (prescription.get("doctor_name") or prescription.get("prescribed_by") if prescription else None),
-        "doctor_speciality": consultation.get("doctor_speciality") or r.get("department") or "General Medicine",
-        "facility": consultation.get("facility") or "District Telemedicine Centre",
-        "scheduled_date": consultation.get("scheduled_date"),
-        "scheduled_time": consultation.get("scheduled_time"),
+        "assigned_doctor": assigned_doctor,
+        "doctor_speciality": doctor_speciality,
+        "facility": facility,
+        "facility_address": facility_address,
+        "scheduled_date": scheduled_date,
+        "scheduled_time": scheduled_time,
         "appointment_status": appointment_status,
         "created_at": r.get("created_at") or datetime.now(timezone.utc).isoformat(),
         "synced": True
