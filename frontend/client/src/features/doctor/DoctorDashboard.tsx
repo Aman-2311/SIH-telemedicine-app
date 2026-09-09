@@ -44,6 +44,8 @@ import {
   Check,
   Circle,
   ArrowRight,
+  Camera,
+  ImageOff,
 } from "lucide-react";
 import { useDoctorQueueStore } from "../../store/useDoctorQueueStore";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -217,6 +219,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [markedFollowUp, setMarkedFollowUp] = useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const [activeModal, setActiveModal] = useState<"notifications" | "sync" | "abdm" | "help" | null>(null);
 
   // Referral Intelligence Panel State
@@ -320,6 +323,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     }
     return displayedQueue[0] || allCases[0] || null;
   }, [selectedCase, allCases, displayedQueue]);
+
+  useEffect(() => {
+    setImageLoadError(false);
+  }, [currentCase?.case_id, currentCase?.id]);
 
   // KPI calculations from real database records
   const totalInQueue = allCases.length;
@@ -1157,7 +1164,11 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         );
 
                         return (
-                          <tr key={item.case_id || item.id}>
+                          <tr
+                            key={item.case_id || item.id}
+                            onClick={() => handleOpenPatient(item)}
+                            className="cursor-pointer hover:bg-blue-50/50 transition-colors"
+                          >
                             {/* Column 1: Patient Details */}
                             <td>
                               <div className="flex items-center gap-3.5">
@@ -1581,38 +1592,82 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       <div className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
                         Patient Clinical Attachment
                       </div>
-                      <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded">1 File</span>
+                      <span
+                        className={`text-xs font-mono font-bold px-2.5 py-1 rounded ${
+                          currentCase.image_url
+                            ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                            : "text-slate-500 bg-slate-100"
+                        }`}
+                      >
+                        {currentCase.image_url ? "1 File" : "0 Files"}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-5">
-                      <div
-                        onClick={() => setImagePreviewOpen(true)}
-                        className="relative w-32 h-24 rounded-2xl overflow-hidden border border-slate-200 cursor-pointer group shadow-sm shrink-0"
-                      >
-                        <img
-                          src={
-                            currentCase.image_url ||
-                            "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=400&q=80"
-                          }
-                          alt="Patient Clinical Attachment"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/0 transition-colors flex items-center justify-center text-white">
-                          <ExternalLink className="w-5 h-5" />
+                    {currentCase.image_url ? (
+                      <div className="flex items-center gap-5">
+                        <div
+                          onClick={() => {
+                            if (!imageLoadError) setImagePreviewOpen(true);
+                          }}
+                          className={`relative w-32 h-24 rounded-2xl overflow-hidden border border-slate-200 shadow-sm shrink-0 ${
+                            imageLoadError ? "bg-slate-100 cursor-default" : "cursor-pointer group"
+                          }`}
+                        >
+                          {imageLoadError ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-2 text-center">
+                              <AlertTriangle className="w-5 h-5 text-amber-500 mb-1" />
+                              <span className="text-[10px] font-bold text-slate-500 leading-tight">Image Unavailable</span>
+                            </div>
+                          ) : (
+                            <>
+                              <img
+                                src={currentCase.image_url}
+                                alt={`Clinical Attachment for Case #${currentCase.case_id || currentCase.id}`}
+                                onError={() => setImageLoadError(true)}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              <div className="absolute inset-0 bg-black/25 group-hover:bg-black/0 transition-colors flex items-center justify-center text-white">
+                                <ExternalLink className="w-5 h-5" />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-slate-600 min-w-0">
+                          <div
+                            className="text-base font-bold text-slate-900 truncate max-w-xs"
+                            title={currentCase.image_url.split("/").pop()?.split("?")[0]}
+                          >
+                            {currentCase.image_url.split("/").pop()?.split("?")[0] ||
+                              `case_${currentCase.case_id || currentCase.id}_attachment.jpg`}
+                          </div>
+                          <div className="text-sm text-slate-500 mt-0.5">
+                            Clinical Observation Photo • {currentCase.department || "General"}
+                          </div>
+                          {!imageLoadError && (
+                            <button
+                              type="button"
+                              onClick={() => setImagePreviewOpen(true)}
+                              className="text-blue-700 hover:text-blue-900 font-bold text-sm mt-2.5 inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <span>Enlarge Image</span>
+                              <ExternalLink className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="text-slate-600">
-                        <div className="text-base font-bold text-slate-900">clinical_photo_01.jpg</div>
-                        <div className="text-sm text-slate-500 mt-1">High-resolution dermatological lesion preview</div>
-                        <button
-                          onClick={() => setImagePreviewOpen(true)}
-                          className="text-blue-700 hover:text-blue-900 font-bold text-sm mt-2.5 inline-flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <span>Enlarge Image</span>
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
+                    ) : (
+                      <div className="flex items-center gap-4 py-4 px-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                          <Camera className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-700">No clinical photo attached</div>
+                          <div className="text-xs text-slate-400 mt-0.5">
+                            The ASHA worker did not attach any symptom or wound photo for this intake.
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -2263,34 +2318,38 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       )}
 
       {/* Image Zoom Modal */}
-      {imagePreviewOpen && (
+      {imagePreviewOpen && currentCase?.image_url && (
         <div
           onClick={() => setImagePreviewOpen(false)}
           className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-6 z-50 cursor-zoom-out"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl overflow-hidden max-w-2xl w-full shadow-2xl border border-slate-200"
+            className="bg-white rounded-2xl overflow-hidden max-w-3xl w-full shadow-2xl border border-slate-200 cursor-default"
           >
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <span className="text-xs font-bold text-slate-800">
-                Clinical Attachment — Case #{currentCase?.case_id || currentCase?.id}
-              </span>
+            <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-bold text-slate-800">
+                  Clinical Attachment — Case #{currentCase?.case_id || currentCase?.id}
+                </span>
+                <span className="text-[11px] font-mono text-slate-500 truncate max-w-sm">
+                  ({currentCase.image_url.split("/").pop()?.split("?")[0]})
+                </span>
+              </div>
               <button
                 onClick={() => setImagePreviewOpen(false)}
-                className="text-slate-500 hover:text-slate-800"
+                className="text-slate-500 hover:text-slate-800 p-1 rounded-md hover:bg-slate-200 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <img
-              src={
-                currentCase?.image_url ||
-                "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80"
-              }
-              alt="Clinical Attachment Preview"
-              className="w-full max-h-[70vh] object-contain bg-slate-900"
-            />
+            <div className="bg-slate-950 p-3 flex items-center justify-center min-h-[300px]">
+              <img
+                src={currentCase.image_url}
+                alt="Clinical Attachment Full Preview"
+                className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
+              />
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,7 @@
 import os
 import time
+import base64
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
@@ -118,6 +120,34 @@ async def submit_patient_intake(data: PatientIntake, current_user: dict = Depend
         vitals_dict["patient_name"] = data.patient_name or "Anonymous Patient"
         vitals_dict["translated_symptoms"] = data.translated_symptoms or data.voice_note_text
 
+        # Resolve clinical image URL (upload base64 to Supabase Storage if needed)
+        resolved_image_url = data.image_url
+        if resolved_image_url and (resolved_image_url.startswith("data:image/") or ";base64," in resolved_image_url):
+            try:
+                if ";base64," in resolved_image_url:
+                    header, b64_str = resolved_image_url.split(";base64,", 1)
+                    content_type = header.replace("data:", "").strip() if "data:" in header else "image/jpeg"
+                else:
+                    b64_str = resolved_image_url
+                    content_type = "image/jpeg"
+                
+                ext = content_type.split("/")[-1] if "/" in content_type else "jpg"
+                if ext not in ["jpg", "jpeg", "png", "webp"]:
+                    ext = "jpg"
+                
+                img_bytes = base64.b64decode(b64_str)
+                unique_filename = f"{uuid.uuid4()}.{ext}"
+                
+                supabase.storage.from_("medical-images").upload(
+                    file=img_bytes,
+                    path=unique_filename,
+                    file_options={"content-type": content_type}
+                )
+                resolved_image_url = supabase.storage.from_("medical-images").get_public_url(unique_filename)
+                print(f"Persisted intake base64 image to Supabase Storage: {resolved_image_url}")
+            except Exception as b64_err:
+                print(f"Warning: Failed to persist base64 image to Supabase Storage: {b64_err}")
+
         db_payload = {
             "abha_id": data.abha_id,
             "vitals": vitals_dict,
@@ -127,7 +157,7 @@ async def submit_patient_intake(data: PatientIntake, current_user: dict = Depend
             "clinical_flags": ai_analysis.get("clinical_flags", []),
             "ai_recommendation": ai_analysis.get("ai_recommendation", ""),
             "generic_medicines": ai_analysis.get("generic_medicines", []),
-            "image_url": data.image_url,
+            "image_url": resolved_image_url,
             "status": "waiting"
         }
 

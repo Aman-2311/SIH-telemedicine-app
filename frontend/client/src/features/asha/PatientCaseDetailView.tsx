@@ -21,6 +21,8 @@ import {
   Phone,
   AlertCircle,
   Check,
+  Camera,
+  X,
 } from "lucide-react";
 import { SubmittedIntakeRecord, useIntakeStore } from "../../store/useIntakeStore";
 import { FacilityMap } from "../../components/FacilityMap";
@@ -40,6 +42,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
   const { syncPendingIntake, scheduleConsultation } = useIntakeStore();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
 
   // Doctor availability & scheduling state
   const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
@@ -1055,6 +1058,73 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
           </div>
         </div>
 
+        {/* Patient Clinical Attachment (if present) */}
+        {intake.image_url && (
+          <div className="cd-panel" style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Camera style={{ width: 16, height: 16, color: "#0284c7" }} />
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Patient Clinical Attachment
+                </span>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "2px 8px", borderRadius: 6 }}>
+                1 File • Supabase Storage
+              </span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <div
+                onClick={() => setPreviewModalImage(intake.image_url || null)}
+                style={{
+                  width: 120,
+                  height: 90,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  border: "1px solid #cbd5e1",
+                  cursor: "pointer",
+                  position: "relative",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                }}
+              >
+                <img
+                  src={intake.image_url}
+                  alt="Clinical Attachment"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
+                  {intake.image_url.split("/").pop()?.split("?")[0] || `clinical_attachment_${intake.id}.jpg`}
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                  Symptom photograph uploaded during field intake • {intake.department || "General Medicine"}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalImage(intake.image_url || null)}
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#0284c7",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                  }}
+                >
+                  <span>Enlarge Clinical Image</span>
+                  <ExternalLink style={{ width: 13, height: 13 }} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* AI Triage Card */}
         <div className="cd-panel">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
@@ -1312,6 +1382,66 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Zoom Modal */}
+      {previewModalImage && (
+        <div
+          onClick={() => setPreviewModalImage(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            cursor: "zoom-out",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              overflow: "hidden",
+              maxWidth: 700,
+              width: "100%",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              cursor: "default",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>
+                Patient Clinical Attachment
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewModalImage(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b" }}
+              >
+                <X style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+            <div style={{ background: "#0f172a", padding: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img
+                src={previewModalImage}
+                alt="Full Clinical Attachment"
+                style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 8 }}
+              />
             </div>
           </div>
         </div>

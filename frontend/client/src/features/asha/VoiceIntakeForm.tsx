@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useIntakeStore } from "../../store/useIntakeStore";
 import { useNetworkStore } from "../../store/useNetworkStore";
-import { IntakeResponse } from "../../utils/api";
+import { api, IntakeResponse } from "../../utils/api";
 import { GeminiIcon } from "../../components/GeminiIcon";
 import { CompactSubmissionStepper } from "./components/CompactSubmissionStepper";
 
@@ -68,6 +68,9 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
     language === "हिंदी" ? "hi-IN" : language === "मराठी" ? "mr-IN" : "en-IN"
   );
   const [imagePreview, setImagePreview] = useState<string | null>(imageUrl || null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [submittedCaseId, setSubmittedCaseId] = useState<string | null>(null);
   const [showStepper, setShowStepper] = useState(false);
   const [micNotice, setMicNotice] = useState<string | null>(null);
 
@@ -190,16 +193,58 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
     void extractVoiceAI(sampleText);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setImageUrl(base64String);
-        setImagePreview(base64String);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a valid image file (JPEG, PNG, WebP).");
+      return;
+    }
+
+    setUploadedFileName(file.name);
+
+    // Immediate local preview so the user gets instant visual response
+    const localUrl = URL.createObjectURL(file);
+    setImagePreview(localUrl);
+
+    // Base64 fallback (held in store for offline sync)
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const b64 = reader.result as string;
+      setImageUrl(b64);
+    };
+    reader.readAsDataURL(file);
+
+    // Direct upload to Supabase Storage if online
+    if (navigator.onLine) {
+      setIsUploadingImage(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await api.post("/api/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        if (res.data?.status === "success" && res.data?.data?.url) {
+          const supabaseUrl = res.data.data.url;
+          setImageUrl(supabaseUrl);
+          setImagePreview(supabaseUrl);
+        }
+      } catch (err: any) {
+        console.warn("Direct Supabase storage upload deferred to intake submission:", err);
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl("");
+    setImagePreview(null);
+    setUploadedFileName(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -215,13 +260,17 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
 
     // Launch the 4-phase vertical submission progress stepper
     setShowStepper(true);
-    void submitIntake();
+    const res = await submitIntake();
+    if (res?.data?.case_id || res?.data?.id) {
+      setSubmittedCaseId(String(res.data.case_id || res.data.id));
+    }
   };
 
   const handleStepperComplete = () => {
     setShowStepper(false);
     resetForm();
     setImagePreview(null);
+    setUploadedFileName(null);
     if (onSuccessSubmitted) {
       onSuccessSubmitted({ offline: !isOnline });
     }
@@ -590,14 +639,35 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
             style={{ display: "none" }}
           />
           {imagePreview ? (
-            <div className="photo-preview-chip">
-              <img src={imagePreview} alt="Clinical Attachment" />
-              <button onClick={() => { setImageUrl(""); setImagePreview(null); }} className="photo-remove-btn">
+            <div className="photo-preview-chip" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ position: "relative", width: 42, height: 42, borderRadius: 8, overflow: "hidden", border: "1px solid #cbd5e1", flexShrink: 0 }}>
+                <img src={imagePreview} alt="Clinical Attachment" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                {isUploadingImage && (
+                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                    <RefreshCw className="w-3.5 h-3.5 spin" />
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {uploadedFileName || "Clinical Photo"}
+                </span>
+                <span style={{ fontSize: 10, color: isUploadingImage ? "#0284c7" : "#059669", fontWeight: 700 }}>
+                  {isUploadingImage ? "Uploading to Supabase..." : "✓ Supabase Storage"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="photo-remove-btn"
+                title="Remove photo"
+              >
                 <X className="w-3 h-3" />
               </button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="btn-outline-photo"
             >
@@ -618,13 +688,18 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
           <button
             id="submit-intake-case-btn"
             onClick={handleSubmit}
-            disabled={isSubmitting || !abhaId || !patientName}
+            disabled={isSubmitting || isUploadingImage || !abhaId || !patientName}
             className="pro-submit-btn"
           >
             {isSubmitting ? (
               <>
                 <RefreshCw className="w-4 h-4 spin" />
                 <span>Submitting to Doctor...</span>
+              </>
+            ) : isUploadingImage ? (
+              <>
+                <RefreshCw className="w-4 h-4 spin" />
+                <span>Uploading Attachment...</span>
               </>
             ) : (
               <>
@@ -642,7 +717,7 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
         isOpen={showStepper}
         patientName={patientName || "Patient"}
         abhaId={abhaId}
-        caseId={lastSubmissionResult?.case_id || "24"}
+        caseId={submittedCaseId || lastSubmissionResult?.case_id || "24"}
         department={triagePriority === "High" ? "Cardiology / Emergency" : "General Medicine"}
         priority={triagePriority}
         isOffline={!isOnline}
