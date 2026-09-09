@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import random
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -88,6 +89,69 @@ async def get_completed_cases(current_user: dict = Depends(require_doctor)):
 
 
 # --- 3. SUBMIT E-PRESCRIPTION & CLOSE CASE ---
+@router.get("/doctors/availability")
+async def get_doctor_availability(department: Optional[str] = None):
+    # Mocking doctors available based on department for the demo
+    # In a real app, this would query a Doctors or Users table filtered by role and status
+    
+    specialties = ["General Medicine", "Cardiology", "Dermatology", "Pediatrics", "Gynecology", "Orthopedics"]
+    facilities = ["District Hospital", "City Medical Center", "Community Health Hub", "Rural Telemedicine Post"]
+    
+    doctors = [
+        {"id": "doc-001", "name": "Dr. Sharma", "speciality": "General Medicine", "facility": "District Hospital", "available_slots": ["09:00 AM", "10:30 AM", "02:00 PM"]},
+        {"id": "doc-002", "name": "Dr. Gupta", "speciality": "Cardiology", "facility": "City Medical Center", "available_slots": ["11:00 AM", "01:00 PM", "04:30 PM"]},
+        {"id": "doc-003", "name": "Dr. Patel", "speciality": "Dermatology", "facility": "Community Health Hub", "available_slots": ["09:30 AM", "11:30 AM", "03:00 PM"]},
+        {"id": "doc-004", "name": "Dr. Reddy", "speciality": "Pediatrics", "facility": "District Hospital", "available_slots": ["10:00 AM", "12:00 PM", "02:30 PM"]},
+        {"id": "doc-005", "name": "Dr. Verma", "speciality": "General Medicine", "facility": "Rural Telemedicine Post", "available_slots": ["08:30 AM", "01:30 PM", "05:00 PM"]}
+    ]
+    
+    if department:
+        filtered = [d for d in doctors if d["speciality"].lower() == department.lower()]
+        # Fallback if no matching speciality for demo
+        if not filtered:
+            filtered = [
+                {"id": f"doc-10{random.randint(0,9)}", "name": f"Dr. {random.choice(['Singh', 'Kumar', 'Das', 'Roy'])}", "speciality": department, "facility": "District Hospital", "available_slots": ["10:00 AM", "02:00 PM"]}
+            ]
+        return {"doctors": filtered}
+        
+    return {"doctors": doctors}
+
+@router.post("/{case_id}/schedule")
+async def schedule_consultation(case_id: str, payload: Dict[str, Any]):
+    query_id = int(case_id) if case_id.isdigit() else case_id
+    record = supabase.table("patient_intakes").select("*").eq("id", query_id).execute()
+    
+    if not record.data:
+        record = supabase.table("patient_intakes").select("*").eq("abha_id", case_id).execute()
+        
+    if not record.data:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
+    vitals_raw = record.data[0].get("vitals") or {}
+    if isinstance(vitals_raw, str):
+        import json
+        try:
+            vitals_raw = json.loads(vitals_raw)
+        except:
+            vitals_raw = {}
+            
+    # Add scheduling metadata to consultation dict inside vitals
+    vitals_raw["consultation"] = {
+        "assigned_doctor": payload.get("assigned_doctor", "Unassigned"),
+        "doctor_speciality": payload.get("doctor_speciality", "General Medicine"),
+        "facility": payload.get("facility", "District Hospital"),
+        "scheduled_date": payload.get("scheduled_date", datetime.now().strftime("%Y-%m-%d")),
+        "scheduled_time": payload.get("scheduled_time", "09:00 AM"),
+        "appointment_status": "scheduled"
+    }
+
+    supabase.table("patient_intakes").update({
+        "vitals": vitals_raw,
+        "status": "scheduled"  # update case status to scheduled
+    }).eq("id", record.data[0]["id"]).execute()
+    
+    return {"status": "success", "message": "Consultation scheduled", "consultation": vitals_raw["consultation"]}
+
 @router.post("/{case_id}/prescribe")
 async def submit_prescription(
     case_id: str,

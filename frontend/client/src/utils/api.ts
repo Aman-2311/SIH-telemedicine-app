@@ -2,8 +2,24 @@ import axios from "axios";
 
 // Localhost FastAPI backend default for SIH Hackathon Demo
 // Uses empty string default so Vite proxy seamlessly routes /api to http://127.0.0.1:8000 without CORS issues
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "";
+
+const DEFAULT_PROD_API_URL = "https://sahara-cio2.onrender.com";
+
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (envUrl) return envUrl;
+  
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".local")) {
+      return "";
+    }
+  }
+  
+  return DEFAULT_PROD_API_URL;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

@@ -45,6 +45,11 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(prescription, dict):
         prescription = {}
 
+    consultation = vitals_raw.get("consultation") or {}
+    
+    status_raw = r.get("status") or "waiting"
+    appointment_status = "completed" if status_raw == "completed" or (prescription and prescription.get("diagnosis")) else consultation.get("appointment_status") or status_raw
+
     return {
         "id": cid,
         "case_id": cid,
@@ -59,8 +64,15 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
         "ai_recommendation": r.get("ai_recommendation") or "",
         "generic_medicines": r.get("generic_medicines") or [],
         "image_url": r.get("image_url"),
-        "status": r.get("status") or "waiting",
+        "status": status_raw,
         "prescription": prescription,
+        "consultation": consultation,
+        "assigned_doctor": consultation.get("assigned_doctor") or (prescription.get("doctor_name") or prescription.get("prescribed_by") if prescription else None),
+        "doctor_speciality": consultation.get("doctor_speciality") or r.get("department") or "General Medicine",
+        "facility": consultation.get("facility") or "District Telemedicine Centre",
+        "scheduled_date": consultation.get("scheduled_date"),
+        "scheduled_time": consultation.get("scheduled_time"),
+        "appointment_status": appointment_status,
         "created_at": r.get("created_at") or datetime.now(timezone.utc).isoformat(),
         "synced": True
     }
