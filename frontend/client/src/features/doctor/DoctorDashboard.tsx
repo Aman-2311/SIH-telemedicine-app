@@ -253,7 +253,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     void fetchCompletedCases();
     const interval = setInterval(() => {
       void fetchQueue();
-      void fetchCompletedCases();
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchQueue, fetchCompletedCases]);

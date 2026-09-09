@@ -416,9 +416,25 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
 
   fetchRecentIntakes: async () => {
     try {
-      const response = await api.get<{ status: string; data: any[] }>("/api/intake/asha/patients");
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        const backendRecords: SubmittedIntakeRecord[] = response.data.data.map((r: any) => ({
+      let rawList: any[] = [];
+      try {
+        const response = await api.get<{ status: string; data: any[] }>("/api/intake/asha/patients");
+        if (response.data?.data && Array.isArray(response.data.data)) {
+          rawList = response.data.data;
+        }
+      } catch {
+        // Fallback to real /api/ queue endpoint if asha/patients route is not mounted on server
+        const queueRes = await api.get<any>("/api/");
+        const raw = Array.isArray(queueRes.data)
+          ? queueRes.data
+          : (Array.isArray(queueRes.data?.data) ? queueRes.data.data : []);
+        if (Array.isArray(raw)) {
+          rawList = raw;
+        }
+      }
+
+      if (rawList.length > 0) {
+        const backendRecords: SubmittedIntakeRecord[] = rawList.map((r: any) => ({
           id: String(r.id),
           case_id: String(r.case_id || r.id),
           patient_name: r.patient_name || "Patient",

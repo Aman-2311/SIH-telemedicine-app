@@ -49,12 +49,22 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
   fetchQueue: async () => {
     set({ isLoadingQueue: true, error: null });
 
-    // 1. Fetch from server if available
+    // 1. Fetch from real backend doctor waiting queue endpoint (GET /api/)
     let serverItems: QueueItem[] = [];
     try {
-      const response = await api.get<QueueItem[]>("/api/queue/");
-      if (Array.isArray(response.data)) {
-        serverItems = response.data;
+      const response = await api.get<any>("/api/");
+      const data = response.data;
+      const raw = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+        ? data.data
+        : [];
+      if (Array.isArray(raw)) {
+        serverItems = raw.map((item: any) => ({
+          ...item,
+          id: String(item.id || item.case_id),
+          case_id: String(item.case_id || item.id),
+        }));
       }
     } catch (err: any) {
       console.warn("Server queue unavailable, falling back to local sync", err?.message);
@@ -157,15 +167,8 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
 
   fetchCompletedCases: async () => {
     set({ isLoadingCompleted: true });
-    let serverCompleted: QueueItem[] = [];
-    try {
-      const response = await api.get<QueueItem[]>("/api/queue/completed");
-      if (Array.isArray(response.data)) {
-        serverCompleted = response.data;
-      }
-    } catch (err: any) {
-      console.warn("Server completed queue unavailable", err);
-    }
+    // Completed cases are maintained locally from doctor prescriptions and synchronized intakes
+    // Obsolete non-existent /api/queue/completed HTTP endpoint removed to eliminate 404 console errors
 
     // Merge with local completed records
     let localCompleted: QueueItem[] = [];
@@ -195,7 +198,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
 
     const seen = new Set<string>();
     const allCompleted: QueueItem[] = [];
-    for (const item of [...localCompleted, ...serverCompleted]) {
+    for (const item of localCompleted) {
       const id = String(item.case_id || item.id);
       if (!seen.has(id)) {
         seen.add(id);
@@ -229,7 +232,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
     let serverPrescriptionResult: PrescriptionResponse | null = null;
     try {
       const response = await api.post<PrescriptionResponse>(
-        `/api/queue/${caseId}/prescribe`,
+        `/api/${caseId}/prescribe`,
         payload
       );
       if (response?.data && typeof response.data === "object") {
