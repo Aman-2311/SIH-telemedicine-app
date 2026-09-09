@@ -384,9 +384,13 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
       {activeTab === "intake" && (
         <div className="page fade-in">
           <VoiceIntakeForm
-            onSuccessSubmitted={() => setActiveTab("map")}
+            onSuccessSubmitted={() => {
+              const latest = submittedIntakes[0];
+              if (latest) setSelectedCase(latest);
+              setActiveTab("case_detail");
+            }}
             onViewCaseDetails={(caseId) => {
-              const match = submittedIntakes.find(i => i.id === caseId || i.id.includes(caseId || "")) || submittedIntakes[0];
+              const match = submittedIntakes.find(i => String(i.id) === String(caseId) || String(i.case_id) === String(caseId) || i.id.includes(caseId || "")) || submittedIntakes[0];
               if (match) setSelectedCase(match);
               setActiveTab("case_detail");
             }}

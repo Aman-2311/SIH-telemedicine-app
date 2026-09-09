@@ -136,10 +136,15 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
       const latestRxRecord = res.data?.latest;
       if (latestRxRecord && latestRxRecord.prescription && latestRxRecord.prescription.diagnosis) {
         const rx = latestRxRecord.prescription;
+        const consult = latestRxRecord.consultation || {};
         setActivePrescription({
           id: latestRxRecord.id,
-          doctor_name: rx.doctor_name || "Dr. Arvind Kulkarni (MD)",
-          hospital: "Sub-District Hospital, Telemedicine Node",
+          doctor_name: rx.doctor_name || consult.assigned_doctor || latestRxRecord.assigned_doctor || "Dr. Arvind Kulkarni (MD)",
+          speciality: consult.doctor_speciality || latestRxRecord.doctor_speciality || latestRxRecord.department || "General Medicine",
+          hospital: consult.facility || latestRxRecord.facility || "District Telemedicine Centre, Wardha",
+          scheduled_date: consult.scheduled_date || latestRxRecord.scheduled_date || "Today",
+          scheduled_time: consult.scheduled_time || latestRxRecord.scheduled_time || "10:30 AM",
+          appointment_status: "Prescription Ready / Complete",
           diagnosis: rx.diagnosis,
           date: rx.prescribed_at
             ? new Date(rx.prescribed_at).toLocaleDateString([], {
@@ -1217,6 +1222,28 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                         </span>
                       </div>
 
+                      {/* Structured Consultation Metadata */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div>
+                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
+                          <span className="font-bold text-slate-800">{activePrescription.doctor_name}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
+                          <span className="font-bold text-slate-800">{activePrescription.speciality || "General Medicine"}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital</span>
+                          <span className="font-bold text-slate-800 truncate block">{activePrescription.hospital}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Status</span>
+                          <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block text-[11px]">
+                            {activePrescription.appointment_status || "Prescription Ready"}
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="mb-4">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
                           Diagnosis
@@ -1260,11 +1287,38 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                       </div>
 
                       {/* Doctor's Advice */}
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
                         <div className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
                           Doctor's Advice
                         </div>
                         <p className="text-sm text-amber-950">{activePrescription.doctor_advice}</p>
+                      </div>
+
+                      {/* Nearest Medicine Source (Jan Aushadhi) + View on Map */}
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                              Nearest Medicine Source
+                            </span>
+                            <span className="text-xs font-bold text-emerald-800">0.8 km</span>
+                            <span className="text-xs font-semibold text-emerald-600">• In Stock</span>
+                          </div>
+                          <div className="font-bold text-slate-900 text-sm mt-1">
+                            PMBJP Jan Aushadhi Kendra
+                          </div>
+                          <div className="text-xs text-slate-600">
+                            Main Market Road, Near Panchayat Office • 80% Generic Savings
+                          </div>
+                        </div>
+
+                        <button
+                          className="btn-clinical-primary text-xs py-2 px-3.5 flex items-center gap-1.5 !bg-emerald-700 hover:!bg-emerald-800"
+                          onClick={() => setActiveTab("map")}
+                        >
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>View on Map / Directions</span>
+                        </button>
                       </div>
 
                       {/* Action Buttons */}
@@ -1286,23 +1340,58 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="lg:col-span-2 bg-white rounded-2xl p-8 border border-slate-200 text-center flex flex-col items-center justify-center min-h-[300px]">
-                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-400">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <h3 className="text-sm font-bold text-slate-800 mb-1">No Active Prescriptions</h3>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-                        {patientHistory.length > 0
-                          ? "Your consultation intake has been recorded and is waiting for review by the consulting doctor."
-                          : "No active prescriptions or pending consultations on record."}
-                      </p>
-                      {patientHistory.length > 0 && (
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
-                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                          Status: {patientHistory[0].status === "waiting" ? "Queued for Doctor Review" : patientHistory[0].status}
+                    patientHistory.length > 0 ? (
+                      <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+                              <Clock className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900">Consultation in Progress</h3>
+                              <p className="text-xs text-slate-500">Case #{patientHistory[0].id || "1"}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            {patientHistory[0].status === "waiting" ? "Waiting for Doctor" : "Scheduled"}
+                          </span>
                         </div>
-                      )}
-                    </div>
+
+                        {/* Structured Consultation Details */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                          <div>
+                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
+                            <span className="font-bold text-slate-800">{patientHistory[0].assigned_doctor || "Dr. Arvind Kulkarni (MD)"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
+                            <span className="font-bold text-slate-800">{patientHistory[0].doctor_speciality || patientHistory[0].department || "General Medicine"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital</span>
+                            <span className="font-bold text-slate-800">{patientHistory[0].facility || "District Telemedicine Centre"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-bold uppercase text-[10px] block">Schedule</span>
+                            <span className="font-bold text-slate-800">{patientHistory[0].scheduled_date || "Today • Slot #2"}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 leading-relaxed">
+                          Your clinical vitals and symptoms are queued with the specialist. Once teleconsultation review is completed, the digital e-prescription and nearest Jan Aushadhi generic pharmacy directions will unlock here.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="lg:col-span-2 bg-white rounded-2xl p-8 border border-slate-200 text-center flex flex-col items-center justify-center min-h-[300px]">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-400">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-800 mb-1">No Active Prescriptions</h3>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                          No active prescriptions or pending consultations on record.
+                        </p>
+                      </div>
+                    )
                   )
                 ) : (
                   <div className="lg:col-span-2 space-y-3">

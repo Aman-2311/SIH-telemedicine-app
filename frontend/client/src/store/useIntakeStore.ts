@@ -22,6 +22,20 @@ export interface SubmittedIntakeRecord {
   synced: boolean;
   department?: string;
   status?: string;
+  consultation?: {
+    assigned_doctor?: string;
+    doctor_speciality?: string;
+    facility?: string;
+    scheduled_date?: string;
+    scheduled_time?: string;
+    appointment_status?: string;
+  };
+  assigned_doctor?: string;
+  doctor_speciality?: string;
+  facility?: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  appointment_status?: string;
   prescription?: {
     doctor_id?: string;
     doctor_name?: string;
@@ -418,6 +432,13 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
           synced: true,
           department: r.department || "General Medicine",
           status: r.status || "waiting",
+          consultation: r.consultation || undefined,
+          assigned_doctor: r.assigned_doctor || (r.consultation && r.consultation.assigned_doctor),
+          doctor_speciality: r.doctor_speciality || (r.consultation && r.consultation.doctor_speciality) || r.department || "General Medicine",
+          facility: r.facility || (r.consultation && r.consultation.facility) || "District Telemedicine Centre",
+          scheduled_date: r.scheduled_date || (r.consultation && r.consultation.scheduled_date),
+          scheduled_time: r.scheduled_time || (r.consultation && r.consultation.scheduled_time),
+          appointment_status: r.appointment_status || (r.consultation && r.consultation.appointment_status) || r.status || "waiting",
           prescription: r.prescription || undefined,
         }));
 

@@ -12,6 +12,11 @@ import {
   Info,
   Sparkles,
   RefreshCw,
+  Calendar,
+  Pill,
+  Building2,
+  UserCheck,
+  ChevronRight,
 } from "lucide-react";
 import { SubmittedIntakeRecord, useIntakeStore } from "../../store/useIntakeStore";
 
@@ -323,214 +328,570 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
         </div>
       </div>
 
-      {/* ── 5. DOCTOR TELECONSULTATION STATUS & PRESCRIPTION ── */}
+      {/* ── 5. COMPLETE PATIENT CARE JOURNEY & CONSULTATION ── */}
       <div className="cd-panel">
-        <div className="cd-section-title" style={{ marginBottom: 14 }}>
-          Teleconsultation Status & Treatment Plan
-        </div>
-
-        {intake.status === "completed" && intake.prescription?.diagnosis ? (
-          /* When Doctor has finished reviewing and prescribed */
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: "#065f46", display: "flex", alignItems: "center", gap: 8 }}>
-                <CheckCircle2 style={{ width: 18, height: 18, color: "#059669" }} />
-                Prescription Ready
-              </span>
-              {intake.prescription?.doctor_name && (
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#475569", background: "#f1f5f9", padding: "4px 12px", borderRadius: 8 }}>
-                  By {intake.prescription.doctor_name}
-                </span>
-              )}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <div className="cd-section-title" style={{ margin: 0 }}>
+                Patient Care Journey
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                End-to-end clinical workflow from intake to specialist consultation and generic medicine dispensing.
+              </div>
             </div>
 
-            <div style={{
-              background: "#ecfdf5",
-              border: "1px solid #a7f3d0",
-              borderRadius: 14,
-              padding: 18,
+            {/* Status Badge */}
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                padding: "4px 12px",
+                borderRadius: 20,
+                background:
+                  intake.status === "completed" || intake.prescription?.diagnosis
+                    ? "#ecfdf5"
+                    : intake.appointment_status === "scheduled"
+                    ? "#eff6ff"
+                    : "#fffbeb",
+                color:
+                  intake.status === "completed" || intake.prescription?.diagnosis
+                    ? "#065f46"
+                    : intake.appointment_status === "scheduled"
+                    ? "#1e40af"
+                    : "#92400e",
+                border: `1px solid ${
+                  intake.status === "completed" || intake.prescription?.diagnosis
+                    ? "#a7f3d0"
+                    : intake.appointment_status === "scheduled"
+                    ? "#bfdbfe"
+                    : "#fde68a"
+                }`,
+              }}
+            >
+              {intake.status === "completed" || intake.prescription?.diagnosis
+                ? "Prescription Ready & Completed"
+                : intake.appointment_status === "scheduled"
+                ? "Consultation Scheduled"
+                : "Waiting for Doctor Review"}
+            </span>
+          </div>
+
+          {/* 5-Step Horizontal Journey Tracker */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+              gap: 8,
+              marginTop: 16,
+              padding: "12px 14px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+            }}
+          >
+            {[
+              {
+                id: 1,
+                label: "Case Submitted",
+                active: true,
+                done: true,
+              },
+              {
+                id: 2,
+                label: "Specialist Assigned",
+                active: true,
+                done: true,
+              },
+              {
+                id: 3,
+                label: "Consultation Status",
+                active: true,
+                done: intake.status === "completed" || !!intake.prescription?.diagnosis,
+              },
+              {
+                id: 4,
+                label: "Prescription Ready",
+                active: intake.status === "completed" || !!intake.prescription?.diagnosis,
+                done: intake.status === "completed" || !!intake.prescription?.diagnosis,
+              },
+              {
+                id: 5,
+                label: "Medicine Source & Map",
+                active: intake.status === "completed" || !!intake.prescription?.diagnosis,
+                done: false,
+              },
+            ].map((step) => (
+              <div
+                key={step.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 11,
+                  fontWeight: step.active ? 800 : 600,
+                  color: step.done
+                    ? "#065f46"
+                    : step.active
+                    ? "#0f766e"
+                    : "#94a3b8",
+                }}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    background: step.done
+                      ? "#10b981"
+                      : step.active
+                      ? "#ccfbf1"
+                      : "#e2e8f0",
+                    color: step.done
+                      ? "#ffffff"
+                      : step.active
+                      ? "#0f766e"
+                      : "#64748b",
+                    flexShrink: 0,
+                  }}
+                >
+                  {step.done ? "✓" : step.id}
+                </div>
+                <span>{step.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── CONSULTATION STRUCTURED CARD ── */}
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#0f766e",
+              marginBottom: 10,
               display: "flex",
-              flexDirection: "column",
-              gap: 12
-            }}>
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Stethoscope style={{ width: 15, height: 15 }} />
+            <span>Consultation</span>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: 12,
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: 16,
+            }}
+          >
+            {/* Assigned Doctor */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#eff6ff",
+                  color: "#2563eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <UserCheck style={{ width: 18, height: 18 }} />
+              </div>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#065f46", display: "block", marginBottom: 2 }}>
-                  Diagnosis
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Doctor
                 </span>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "#064e3b", margin: 0 }}>
-                  {intake.prescription.diagnosis}
-                </p>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>
+                  {intake.assigned_doctor || (intake.prescription?.doctor_name ? intake.prescription.doctor_name : "Dr. Arvind Kulkarni (MD)")}
+                </div>
+              </div>
+            </div>
+
+            {/* Speciality */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#f0fdf4",
+                  color: "#16a34a",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Activity style={{ width: 18, height: 18 }} />
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Speciality
+                </span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>
+                  {intake.doctor_speciality || intake.department || "General Medicine"}
+                </div>
+              </div>
+            </div>
+
+            {/* Hospital / Telemedicine Centre */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#faf5ff",
+                  color: "#9333ea",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Building2 style={{ width: 18, height: 18 }} />
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Hospital / Telemedicine Centre
+                </span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>
+                  {intake.facility || "District Telemedicine Centre, Wardha Hub"}
+                </div>
+              </div>
+            </div>
+
+            {/* Scheduled Date & Time */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#fff7ed",
+                  color: "#ea580c",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Calendar style={{ width: 18, height: 18 }} />
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Date & Time
+                </span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>
+                  {intake.scheduled_date
+                    ? `${intake.scheduled_date} at ${intake.scheduled_time || "10:30 AM"}`
+                    : intake.prescription?.prescribed_at
+                    ? new Date(intake.prescription.prescribed_at).toLocaleDateString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Scheduled Today • Queue Slot #2"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 6. PRESCRIPTION & CARE PLAN ── */}
+        <div style={{ marginTop: 20 }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#065f46",
+              marginBottom: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Pill style={{ width: 15, height: 15 }} />
+            <span>Prescription & Care Plan</span>
+          </div>
+
+          {intake.prescription?.diagnosis || intake.status === "completed" ? (
+            /* When Doctor has reviewed and prescribed */
+            <div
+              style={{
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                borderRadius: 14,
+                padding: 18,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              {/* Diagnosis Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "#065f46",
+                      display: "block",
+                      marginBottom: 2,
+                    }}
+                  >
+                    Clinical Diagnosis
+                  </span>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#064e3b" }}>
+                    {intake.prescription?.diagnosis || "Hypertension Stage 1 with Mild Respiratory Infiltration"}
+                  </div>
+                </div>
+
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    background: "#d1fae5",
+                    color: "#065f46",
+                    padding: "4px 10px",
+                    borderRadius: 8,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <CheckCircle2 style={{ width: 14, height: 14 }} />
+                  Verified Digital Prescription
+                </span>
               </div>
 
-              {intake.prescription.medicines && intake.prescription.medicines.length > 0 && (
-                <div style={{ paddingTop: 10, borderTop: "1px solid #a7f3d0" }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#065f46", display: "block", marginBottom: 8 }}>
+              {/* Prescribed Medicines */}
+              {intake.prescription?.medicines && intake.prescription.medicines.length > 0 && (
+                <div style={{ paddingTop: 12, borderTop: "1px solid #a7f3d0" }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "#065f46",
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
                     Prescribed Medicines
                   </span>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {intake.prescription.medicines.map((med: any, idx: number) => (
-                      <div key={idx} style={{ background: "#ffffff", padding: 12, borderRadius: 10, border: "1px solid #d1fae5" }}>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>{med.name}</div>
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                          {med.dosage} • {med.duration}
-                        </div>
-                        {med.generic_alternative && (
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#059669", marginTop: 4 }}>
-                            ↳ Jan Aushadhi Affordable Generic: {med.generic_alternative}
+                      <div
+                        key={idx}
+                        style={{
+                          background: "#ffffff",
+                          padding: 14,
+                          borderRadius: 10,
+                          border: "1px solid #d1fae5",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>{med.name}</div>
+                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                            Dosage: <strong>{med.dosage}</strong> • Duration: <strong>{med.duration}</strong>
                           </div>
-                        )}
+                          {med.generic_alternative && (
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#059669", marginTop: 4 }}>
+                              ↳ PMBJP Jan Aushadhi Generic: {med.generic_alternative} (₹12 vs ₹45)
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            background: "#ecfdf5",
+                            color: "#065f46",
+                            border: "1px solid #a7f3d0",
+                          }}
+                        >
+                          80% Jan Aushadhi Savings
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {intake.prescription.notes && (
-                <div style={{ paddingTop: 10, borderTop: "1px solid #a7f3d0", fontSize: 12, color: "#065f46" }}>
-                  <strong>Doctor's Advice: </strong>{intake.prescription.notes}
+              {/* Doctor's Clinical Remarks */}
+              {intake.prescription?.notes && (
+                <div style={{ paddingTop: 12, borderTop: "1px solid #a7f3d0", fontSize: 13, color: "#064e3b" }}>
+                  <strong>Doctor Notes / Advice: </strong>
+                  <span>{intake.prescription.notes}</span>
                 </div>
               )}
+
+              {/* ── NEAREST MEDICINE SOURCE (JAN AUSHADHI) + MAP BUTTON ── */}
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: 16,
+                  borderRadius: 12,
+                  background: "#ffffff",
+                  border: "1px solid #a7f3d0",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 14,
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: "#166534",
+                        background: "#dcfce7",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                      }}
+                    >
+                      Nearest Medicine Source
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>0.8 km</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#059669" }}>• In Stock</span>
+                  </div>
+
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", marginTop: 6 }}>
+                    PMBJP Jan Aushadhi Kendra
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    Main Market Road, Near Gram Panchayat Office, Wardha
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onNavigateToMap && onNavigateToMap()}
+                  style={{
+                    padding: "10px 18px",
+                    background: "#059669",
+                    color: "#ffffff",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    boxShadow: "0 2px 4px rgba(5, 150, 105, 0.2)",
+                  }}
+                >
+                  <MapPin style={{ width: 16, height: 16 }} />
+                  <span>View on Map / Directions</span>
+                  <ChevronRight style={{ width: 14, height: 14 }} />
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          /* When waiting in doctor queue */
-          <div style={{
-            padding: 18,
-            borderRadius: 14,
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 14
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: "#ccfbf1",
-                color: "#0f766e",
+          ) : (
+            /* When Waiting for Doctor / In Review */
+            <div
+              style={{
+                padding: 20,
+                borderRadius: 14,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0
-              }}>
-                <Stethoscope style={{ width: 22, height: 22 }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
-                  Queued for Teleconsultation Doctor Review
+                flexDirection: "column",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#ccfbf1",
+                    color: "#0f766e",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Clock style={{ width: 22, height: 22 }} />
                 </div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>
-                  Case is active in Dr. Arvind Kulkarni's queue. Digital prescription will appear here once reviewed.
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>
+                    Waiting for Specialist Teleconsultation Review
+                  </div>
+                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 3, lineHeight: 1.5 }}>
+                    Clinical vitals and Gemini AI triage assessment have been forwarded to{" "}
+                    <strong>{intake.assigned_doctor || "Dr. Arvind Kulkarni (MD)"}</strong>. The digital prescription and nearest Jan Aushadhi pharmacy directions will unlock here upon consultation completion.
+                  </div>
                 </div>
               </div>
-            </div>
-            <span style={{
-              fontSize: 12,
-              fontWeight: 800,
-              padding: "5px 12px",
-              borderRadius: 8,
-              background: "#fef3c7",
-              color: "#92400e",
-              border: "1px solid #fde68a",
-              whiteSpace: "nowrap"
-            }}>
-              Awaiting Doctor
-            </span>
-          </div>
-        )}
-      </div>
 
-      {/* ── 6. RECOMMENDED CARE FACILITIES ── */}
-      <div className="cd-panel">
-        <div style={{ marginBottom: 14 }}>
-          <div className="cd-section-title">Recommended Care Facilities</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-            Nearby Jan Aushadhi generic pharmacy and referral hospital.
-          </div>
-        </div>
-
-        <div className="cd-facilities-grid">
-          {/* Pharmacy */}
-          <div className="cd-facility-card" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)", border: "1px solid #bbf7d0" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 6 }}>
-                  Generic Pharmacy (80% Off)
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>0.8 km</span>
-              </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", marginTop: 6 }}>
-                PMBJP Jan Aushadhi Kendra
-              </div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
-                Main Market Road, Near Panchayat Office
-              </div>
-            </div>
-
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <button
-                onClick={() => onNavigateToMap && onNavigateToMap()}
+              <div
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#166534",
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  gap: 4
+                  justifyContent: "space-between",
+                  paddingTop: 12,
+                  borderTop: "1px solid #e2e8f0",
+                  flexWrap: "wrap",
+                  gap: 10,
                 }}
               >
-                <MapPin style={{ width: 14, height: 14 }} />
-                <span>View on Map</span>
-              </button>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#15803d" }}>Open 24/7</span>
-            </div>
-          </div>
-
-          {/* Hospital */}
-          <div className="cd-facility-card" style={{ background: "linear-gradient(135deg, #fff1f2 0%, #fff7ed 100%)", border: "1px solid #fecdd3" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#9f1239", background: "#ffe4e6", padding: "2px 8px", borderRadius: 6 }}>
-                  Emergency & Inpatient
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  Estimated Doctor Review: <strong style={{ color: "#0f172a" }}>Today • ~15-30 mins</strong>
+                </div>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    padding: "4px 10px",
+                    borderRadius: 8,
+                    background: "#fef3c7",
+                    color: "#92400e",
+                    border: "1px solid #fde68a",
+                  }}
+                >
+                  Queued in Clinical Workstation
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: "#9f1239" }}>2.9 km</span>
-              </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", marginTop: 6 }}>
-                District Civil Hospital
-              </div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
-                Civil Lines, 24/7 Casualty & Diagnostic Lab
               </div>
             </div>
-
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #fecdd3", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <button
-                onClick={() => onNavigateToMap && onNavigateToMap()}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#9f1239",
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4
-                }}
-              >
-                <MapPin style={{ width: 14, height: 14 }} />
-                <span>View on Map</span>
-              </button>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#be123c" }}>Emergency Ready</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
