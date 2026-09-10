@@ -109,6 +109,7 @@ interface IntakeState {
   ) => Promise<{ success: boolean; data?: any }>;
   resetForm: () => void;
   clearError: () => void;
+  updateSyncedIntake: (localId: string, officialId: string) => void;
 }
 
 const initialVitals: Vitals = {
@@ -337,7 +338,7 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     // Check offline status
     if (!navigator.onLine) {
       try {
-        await queueOfflineIntake(payload);
+        await queueOfflineIntake(payload, newLocalRecord.id);
         saveToQueue(false);
         set({
           isSubmitting: false,
@@ -370,7 +371,7 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     } catch (err: any) {
       // If server error or dropped connection mid-request, fallback to Dexie & local list
       try {
-        await queueOfflineIntake(payload);
+        await queueOfflineIntake(payload, newLocalRecord.id);
         saveToQueue(false);
         set({
           isSubmitting: false,
@@ -435,8 +436,8 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
           rawList = response.data.data;
         }
       } catch {
-        // Fallback to real /api/ queue endpoint if asha/patients route is not mounted on server
-        const queueRes = await api.get<any>("/api/");
+        // Fallback to real /api/queue/ endpoint if asha/patients route is not mounted on server
+        const queueRes = await api.get<any>("/api/queue/");
         const raw = Array.isArray(queueRes.data)
           ? queueRes.data
           : (Array.isArray(queueRes.data?.data) ? queueRes.data.data : []);
@@ -568,4 +569,24 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     }),
 
   clearError: () => set({ error: null }),
+
+  updateSyncedIntake: (localId: string, officialId: string) => {
+    const current = get().submittedIntakes;
+    const updated = current.map((item) =>
+      item.id === localId || item.case_id === localId
+        ? { ...item, synced: true, case_id: officialId }
+        : item
+    );
+    try {
+      localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));
+    } catch {}
+    set({ submittedIntakes: updated });
+  },
 }));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("intake-synced", (e: any) => {
+    const { localId, officialId } = e.detail;
+    useIntakeStore.getState().updateSyncedIntake(localId, officialId);
+  });
+}

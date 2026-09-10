@@ -31,9 +31,10 @@ export async function getPendingIntakes(): Promise<OfflineIntake[]> {
   return db.intakes.where("status").anyOf("queued", "sync_failed").toArray();
 }
 
-export async function queueOfflineIntake(payload: IntakePayload): Promise<number> {
+export async function queueOfflineIntake(payload: IntakePayload, local_case_id: string): Promise<number> {
   const id = await db.intakes.add({
     payload,
+    local_case_id,
     status: "queued",
     retries: 0,
     created_at: new Date().toISOString(),
@@ -61,9 +62,13 @@ export async function syncQueuedIntakes(): Promise<{ synced: number; failed: num
       await db.intakes.update(item.localId, { status: "syncing" });
 
       try {
-        await api.post<IntakeResponse>("/api/intake/", item.payload);
+        const res = await api.post<IntakeResponse>("/api/intake/", item.payload);
         await db.intakes.update(item.localId, { status: "synced" });
         synced++;
+        const officialCaseId = String((res.data as any)?.case_id || (res.data as any)?.id || item.local_case_id);
+        window.dispatchEvent(new CustomEvent("intake-synced", {
+          detail: { localId: item.local_case_id, officialId: officialCaseId }
+        }));
       } catch (error) {
         failed++;
         const errorMessage =

@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { SubmittedIntakeRecord, useIntakeStore } from "../../store/useIntakeStore";
+import { useLanguageStore } from "../../store/useLanguageStore";
 import { FacilityMap } from "../../components/FacilityMap";
 import { api } from "../../utils/api";
 
@@ -40,6 +41,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
   onNavigateToMap,
 }) => {
   const { syncPendingIntake, scheduleConsultation } = useIntakeStore();
+  const { t } = useLanguageStore();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
@@ -151,11 +153,11 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
       <div className="cd-top-bar">
         <button onClick={onBack} className="cd-back-btn">
           <ArrowLeft style={{ width: 16, height: 16 }} />
-          <span>Back to Patients</span>
+          <span>{t("backToPatients")}</span>
         </button>
 
         <span className="cd-case-id">
-          Case #{String(intake.case_id || intake.id).replace("case-", "").slice(0, 8)}
+          {t("caseId")} #{String(intake.case_id || intake.id).replace("case-", "").slice(0, 8)}
         </span>
       </div>
 
@@ -194,10 +196,10 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: 14, color: "#78350f" }}>
-                Pending Sync to Doctor Queue
+                {t("pendingSyncToDoctorQueue")}
               </div>
               <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>
-                This intake was recorded offline. Click to dispatch directly to the clinical workstation.
+                {t("offlineIntakeDesc")}
               </div>
               {syncFeedback && (
                 <div
@@ -242,7 +244,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
                 animation: isSyncing ? "spin 1s linear infinite" : "none",
               }}
             />
-            <span>{isSyncing ? "Syncing..." : "Sync to Doctor Now"}</span>
+            <span>{isSyncing ? "Syncing..." : t("syncToDoctorNow")}</span>
           </button>
         </div>
       )}
@@ -276,7 +278,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
             </div>
             <div className="cd-meta-row" style={{ marginTop: 4 }}>
               <span>
-                Case ID:{" "}
+                {t("caseId")} 
                 <strong style={{ color: "#0f172a", fontFamily: "monospace" }}>
                   #{String(intake.case_id || intake.id).replace("case-", "").slice(0, 8)}
                 </strong>
@@ -391,16 +393,16 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
                   display: "block",
                 }}
               >
-                Specialist Consultation Care Journey
+                {t("specialistConsultation")}
               </span>
               <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>
                 {isCompleted
-                  ? "Consultation Completed"
+                  ? t("completedAndPrescribed")
                   : isSlotConfirmed
-                  ? "Consultation Scheduled"
+                  ? t("doctorAssigned")
                   : isDoctorAssigned
                   ? "Awaiting Consultation Slot"
-                  : "Specialist Assignment"}
+                  : t("awaitingDoctorAssignment")}
               </div>
             </div>
           </div>
@@ -722,7 +724,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
             >
               <div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                  Consultation Date
+                  {t("consultationDate")}
                 </span>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
                   <Calendar style={{ width: 14, height: 14, color: "#0284c7" }} />
@@ -732,7 +734,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
 
               <div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                  Consultation Time
+                  {t("consultationTime")}
                 </span>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
                   <Clock style={{ width: 14, height: 14, color: "#0284c7" }} />
@@ -742,7 +744,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
 
               <div style={{ gridColumn: "span 2" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                  Telemedicine / Hospital Centre
+                  {t("facilityLocation")}
                 </span>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
                   <Building2 style={{ width: 14, height: 14, color: "#0284c7" }} />
@@ -901,7 +903,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
                       textTransform: "uppercase",
                     }}
                   >
-                    Get Your Medicines
+                    {t("recommendedPharmacy")}
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>0.8 km</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#059669" }}>• In Stock</span>
@@ -967,7 +969,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
           3. AI / CLINICAL SUMMARY
       ══════════════════════════════════════════════════ */}
       <div style={{ marginBottom: 24 }}>
-        <div className="cd-section-title">AI / Clinical Summary</div>
+        <div className="cd-section-title">{t("aiClinicalSummary")}</div>
 
         {/* Clinical Vitals */}
         <div className="cd-vitals-grid" style={{ marginBottom: 16 }}>
@@ -1191,7 +1193,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
             }}
           >
             <Pill style={{ width: 15, height: 15 }} />
-            <span>Verified Digital Prescription & Generic Savings</span>
+            <span>{t("prescription")}</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1253,11 +1255,17 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
           <div>
             <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>
               <MapPin style={{ width: 18, height: 18, color: "#2563eb" }} />
-              <span>Geospatial Care Map & Telemedicine Hubs</span>
+              <span>{t("mapDirections")}</span>
             </div>
             <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
               Live GPS location of patient relative to assigned specialist centre and Jan Aushadhi medicine source.
             </div>
+            {(isSlotConfirmed || isCompleted || isDoctorAssigned) && (
+              <div style={{ marginTop: 8, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#0f172a" }}>{activeFacility}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>{activeAddress}</div>
+              </div>
+            )}
           </div>
 
           {/* Color-coded Legend */}
@@ -1335,11 +1343,11 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
               <div>
-                <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Doctor:</span>
+                <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>{t("doctor")}:</span>
                 <div style={{ fontWeight: 800, color: "#0f172a" }}>{activeDoctorName}</div>
               </div>
               <div>
-                <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Speciality:</span>
+                <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>{t("speciality")}:</span>
                 <div style={{ fontWeight: 800, color: "#0f172a" }}>{activeSpeciality}</div>
               </div>
               <div>
@@ -1360,7 +1368,7 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
                   <div style={{ fontWeight: 800, color: "#0f172a" }}>{activeTime || "10:30 AM"}</div>
                 </div>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>Status:</span>
+                  <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>{t("consultationStatus")}:</span>
                   <div style={{ fontWeight: 800, color: "#059669" }}>Confirmed</div>
                 </div>
               </div>

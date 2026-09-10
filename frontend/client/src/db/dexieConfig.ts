@@ -3,6 +3,7 @@ import { IntakePayload, PrescriptionResponse, Facility } from "../utils/api";
 
 export interface OfflineIntake {
   localId?: number;
+  local_case_id: string;
   payload: IntakePayload;
   status: "queued" | "syncing" | "synced" | "sync_failed";
   retries: number;

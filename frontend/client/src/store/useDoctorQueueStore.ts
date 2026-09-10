@@ -49,10 +49,10 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
   fetchQueue: async () => {
     set({ isLoadingQueue: true, error: null });
 
-    // 1. Fetch from real backend doctor waiting queue endpoint (GET /api/)
+    // 1. Fetch from real backend doctor waiting queue endpoint (GET /api/queue/)
     let serverItems: QueueItem[] = [];
     try {
-      const response = await api.get<any>("/api/");
+      const response = await api.get<any>("/api/queue/");
       const data = response.data;
       const raw = Array.isArray(data)
         ? data
@@ -174,8 +174,22 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
 
   fetchCompletedCases: async () => {
     set({ isLoadingCompleted: true });
-    // Completed cases are maintained locally from doctor prescriptions and synchronized intakes
-    // Obsolete non-existent /api/queue/completed HTTP endpoint removed to eliminate 404 console errors
+
+    let serverCompleted: QueueItem[] = [];
+    try {
+      const response = await api.get<any>("/api/queue/completed");
+      const data = response.data;
+      const raw = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      if (Array.isArray(raw)) {
+        serverCompleted = raw.map((item: any) => ({
+          ...item,
+          id: String(item.id || item.case_id),
+          case_id: String(item.case_id || item.id),
+        }));
+      }
+    } catch (err: any) {
+      console.warn("Server completed cases unavailable, falling back to local", err?.message);
+    }
 
     // Merge with local completed records
     let localCompleted: QueueItem[] = [];
@@ -205,7 +219,7 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
 
     const seen = new Set<string>();
     const allCompleted: QueueItem[] = [];
-    for (const item of localCompleted) {
+    for (const item of [...localCompleted, ...serverCompleted]) {
       const id = String(item.case_id || item.id);
       if (!seen.has(id)) {
         seen.add(id);

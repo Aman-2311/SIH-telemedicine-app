@@ -8,14 +8,13 @@ import { useAuthStore } from "./store/useAuthStore";
 import { useNetworkStore } from "./store/useNetworkStore";
 import { UserRole } from "./utils/api";
 import { startSyncManager } from "./db/syncManager";
-
-type AppLanguage = "English" | "हिंदी" | "मराठी";
+import { useLanguageStore } from "./store/useLanguageStore";
 
 export default function App() {
   const { isAuthenticated, role, logout } = useAuthStore();
   const { initNetworkListeners } = useNetworkStore();
-
-  const [language, setLanguage] = useState<AppLanguage>("English");
+  
+  const { language, setLanguage } = useLanguageStore();
   const [activeRole, setActiveRole] = useState<UserRole | null>(role || null);
 
   // ─── Splash Screen State ───
