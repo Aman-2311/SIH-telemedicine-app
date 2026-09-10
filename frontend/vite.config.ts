@@ -203,7 +203,18 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+const isDev = process.env.NODE_ENV !== "production";
+
+// jsxLocPlugin and vitePluginManusRuntime are Manus AI dev-only plugins.
+// They MUST NOT run in production — jsxLocPlugin is incompatible with Vite 7
+// and injects JSX metadata that causes Rollup TDZ crashes on Vercel.
+const plugins = [
+  react(),
+  tailwindcss(),
+  ...(isDev ? [jsxLocPlugin(), vitePluginManusRuntime()] : []),
+  vitePluginManusDebugCollector(),
+  vitePluginStorageProxy(),
+];
 
 export default defineConfig({
   plugins,
