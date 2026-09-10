@@ -447,7 +447,13 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
       }
 
       if (rawList.length > 0) {
-        const backendRecords: SubmittedIntakeRecord[] = rawList.map((r: any) => ({
+        const validBackend = rawList.filter((r: any) => {
+          const abha = (r.abha_id || "").toString();
+          const name = (r.patient_name || "").toString();
+          return !abha.startsWith("TEST-ASHA") && !name.startsWith("Patient #");
+        });
+
+        const backendRecords: SubmittedIntakeRecord[] = validBackend.map((r: any) => ({
           id: String(r.id),
           case_id: String(r.case_id || r.id),
           patient_name: r.patient_name || "Patient",
@@ -465,6 +471,7 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
           assigned_doctor: r.assigned_doctor || (r.consultation && r.consultation.assigned_doctor),
           doctor_speciality: r.doctor_speciality || (r.consultation && r.consultation.doctor_speciality) || r.department || "General Medicine",
           facility: r.facility || (r.consultation && r.consultation.facility) || "District Telemedicine Centre",
+          facility_address: r.facility_address || (r.consultation && r.consultation.facility_address) || "Civil Hospital Road, Wardha, Maharashtra 442001",
           scheduled_date: r.scheduled_date || (r.consultation && r.consultation.scheduled_date),
           scheduled_time: r.scheduled_time || (r.consultation && r.consultation.scheduled_time),
           appointment_status: r.appointment_status || (r.consultation && r.consultation.appointment_status) || r.status || "waiting",
@@ -473,7 +480,15 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
 
         const current = get().submittedIntakes;
         const unsynced = current.filter((item) => !item.synced);
-        const combined = [...unsynced, ...backendRecords];
+        const seenIds = new Set<string>();
+        const combined: SubmittedIntakeRecord[] = [];
+        for (const item of [...unsynced, ...backendRecords]) {
+          const cid = String(item.case_id || item.id);
+          if (!seenIds.has(cid)) {
+            seenIds.add(cid);
+            combined.push(item);
+          }
+        }
         localStorage.setItem("sahara_submitted_intakes", JSON.stringify(combined));
         set({ submittedIntakes: combined });
       }

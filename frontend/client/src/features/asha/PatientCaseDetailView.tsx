@@ -586,17 +586,72 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
           >
             <div>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#c2410c", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Specialist Assigned
+                SPECIALIST CARE DESTINATION
               </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: "#9a3412", marginTop: 4 }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#9a3412", marginTop: 4 }}>
                 {activeDoctorName}
               </div>
-              <div style={{ fontSize: 13, color: "#c2410c", marginTop: 2 }}>
-                Speciality: <strong>{activeSpeciality}</strong> • Facility: <strong>{activeFacility}</strong>
+            </div>
+
+            {/* Destination Grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+                background: "#ffffff",
+                padding: 14,
+                borderRadius: 12,
+                border: "1px solid #fed7aa",
+              }}
+            >
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Doctor</span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>{activeDoctorName}</div>
               </div>
-              <div style={{ fontSize: 12, color: "#ea580c", marginTop: 4 }}>
-                Status: <strong>Awaiting consultation slot confirmation</strong>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Speciality</span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>{activeSpeciality}</div>
               </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Hospital / Telemedicine Centre</span>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>{activeFacility}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Consultation / Visit</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#ea580c", marginTop: 2 }}>
+                  {activeDate && activeTime ? `${activeDate} at ${activeTime}` : "Consultation time will be shown once assigned."}
+                </div>
+              </div>
+              <div style={{ gridColumn: "span 2" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Full Address</span>
+                <div style={{ fontSize: 13, color: "#334155", fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
+                  <MapPin style={{ width: 14, height: 14, color: "#c2410c", flexShrink: 0 }} />
+                  <span>{activeAddress}</span>
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Status</span>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#c2410c", marginTop: 2 }}>
+                  Synced / Specialist Assigned / Awaiting Slot
+                </div>
+              </div>
+            </div>
+
+            {/* Human-readable routing destination message */}
+            <div
+              style={{
+                background: "#fffaf5",
+                border: "1px solid #fed7aa",
+                borderRadius: 10,
+                padding: "12px 14px",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#9a3412",
+                lineHeight: 1.5,
+              }}
+            >
+              👉 Please visit <strong>{activeFacility}</strong> at <strong>{activeAddress}</strong> for your consultation with <strong>{activeDoctorName}</strong>. Consultation time will be shown once assigned.
             </div>
 
             {/* Slot picker to confirm slot */}

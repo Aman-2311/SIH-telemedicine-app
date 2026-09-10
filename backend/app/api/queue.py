@@ -44,7 +44,11 @@ async def get_patient_queue(current_user: dict = Depends(require_doctor)):
             .execute()
         )
         raw_data = response.data or []
-        formatted_data = [format_intake_record(r) for r in raw_data]
+        formatted_data = [
+            format_intake_record(r) for r in raw_data
+            if not (r.get("abha_id") or "").startswith("TEST-ASHA")
+            and not (format_intake_record(r).get("patient_name") or "").startswith("Patient #")
+        ]
     except Exception as e:
         print(f"Error fetching waiting queue from Supabase: {e}")
         formatted_data = []
@@ -175,7 +179,8 @@ async def get_doctor_availability(department: Optional[str] = None):
 
 @router.post("/{case_id}/schedule")
 async def schedule_consultation(case_id: str, payload: Dict[str, Any]):
-    query_id = int(case_id) if case_id.isdigit() else case_id
+    clean_id = str(case_id).replace("case-", "").strip()
+    query_id = int(clean_id) if clean_id.isdigit() else clean_id
     record = supabase.table("patient_intakes").select("*").eq("id", query_id).execute()
     
     if not record.data:
@@ -250,7 +255,8 @@ async def submit_prescription(
     }
 
     try:
-        query_id = int(case_id) if case_id.isdigit() else case_id
+        clean_id = str(case_id).replace("case-", "").strip()
+        query_id = int(clean_id) if clean_id.isdigit() else clean_id
         
         # Load existing record to maintain consultation data
         existing = supabase.table("patient_intakes").select("*").eq("id", query_id).execute()

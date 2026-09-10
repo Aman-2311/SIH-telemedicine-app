@@ -60,11 +60,17 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         ? data.data
         : [];
       if (Array.isArray(raw)) {
-        serverItems = raw.map((item: any) => ({
-          ...item,
-          id: String(item.id || item.case_id),
-          case_id: String(item.case_id || item.id),
-        }));
+        serverItems = raw
+          .filter((item: any) => {
+            const abha = (item.abha_id || "").toString();
+            const name = (item.patient_name || "").toString();
+            return !abha.startsWith("TEST-ASHA") && !name.startsWith("Patient #");
+          })
+          .map((item: any) => ({
+            ...item,
+            id: String(item.id || item.case_id),
+            case_id: String(item.case_id || item.id),
+          }));
       }
     } catch (err: any) {
       console.warn("Server queue unavailable, falling back to local sync", err?.message);
@@ -78,7 +84,12 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           localItems = parsed
-            .filter((p: any) => p.status === "waiting" || p.status === "scheduled" || !p.status)
+            .filter((p: any) => {
+              const abha = (p.abha_id || "").toString();
+              const name = (p.patient_name || "").toString();
+              if (abha.startsWith("TEST-ASHA") || name.startsWith("Patient #")) return false;
+              return p.status === "waiting" || p.status === "scheduled" || !p.status;
+            })
             .map((p: any) => ({
               id: String(p.id || p.case_id || Date.now()),
               case_id: String(p.case_id || p.id || Date.now()),
@@ -252,10 +263,18 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
     set({ isSubmittingPrescription: true, error: null });
     let serverPrescriptionResult: PrescriptionResponse | null = null;
     try {
-      const response = await api.post<PrescriptionResponse>(
-        `/api/${caseId}/prescribe`,
-        payload
-      );
+      let response;
+      try {
+        response = await api.post<PrescriptionResponse>(
+          `/api/queue/${caseId}/prescribe`,
+          payload
+        );
+      } catch {
+        response = await api.post<PrescriptionResponse>(
+          `/api/${caseId}/prescribe`,
+          payload
+        );
+      }
       if (response?.data && typeof response.data === "object") {
         serverPrescriptionResult = response.data;
       }

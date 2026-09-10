@@ -126,6 +126,25 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
   }, [patientHistory]);
   const historyCases = patientHistory;
 
+  const activePrescription = useMemo(() => {
+    const caseWithRx = patientHistory.find((c) => c.prescription);
+    if (!caseWithRx) return null;
+    const rx = caseWithRx.prescription;
+    const consult = caseWithRx.consultation || caseWithRx.vitals?.consultation || {};
+    return {
+      ...rx,
+      case_id: caseWithRx.case_id || caseWithRx.id,
+      doctor_name: rx.doctor_name || rx.prescribed_by || consult.assigned_doctor || caseWithRx.assigned_doctor || "Dr. Arvind Kulkarni (MD)",
+      speciality: consult.doctor_speciality || caseWithRx.doctor_speciality || caseWithRx.department || "General Medicine",
+      hospital: consult.facility || caseWithRx.facility || "District Civil Hospital & Telemedicine Hub",
+      facility_address: consult.facility_address || caseWithRx.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001",
+      diagnosis: rx.diagnosis || caseWithRx.translated_symptoms || "Consultation Completed",
+      date: caseWithRx.created_at ? new Date(caseWithRx.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "Today",
+      medicines: rx.medicines || [],
+      notes: rx.notes || "Follow prescribed dosage and take medicines with water after food.",
+    };
+  }, [patientHistory]);
+
   // Fetch real consultation & prescription records from database
   const fetchPatientData = useCallback(async () => {
     const abha = user?.abha_id || "TEST-PATIENT-MH-0002";
@@ -986,7 +1005,7 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                       <MapPin className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="patient-stat-num">4</div>
+                  <div className="patient-stat-num">{facilities?.length || 0}</div>
                   <div className="patient-stat-link">
                     <span>Near your location</span>
                     <ChevronRight className="w-3 h-3" />
@@ -1394,6 +1413,13 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                         }
 
                         if (isSlotConfirmed) {
+                          const consult = currentCase.consultation || currentCase.vitals?.consultation || {};
+                          const docName = currentCase.assigned_doctor || consult.assigned_doctor || "Dr. Arvind Kulkarni (MD)";
+                          const docSpeciality = currentCase.doctor_speciality || consult.doctor_speciality || currentCase.department || "General Medicine";
+                          const facilityName = currentCase.facility || consult.facility || "District Civil Hospital & Telemedicine Hub";
+                          const facilityAddr = currentCase.facility_address || consult.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001";
+                          const consultSchedule = `${currentCase.scheduled_date} at ${currentCase.scheduled_time}`;
+
                           return (
                             <div key={idx} className="bg-gradient-to-br from-sky-50/80 to-blue-50/60 rounded-2xl p-6 border-2 border-sky-200 shadow-sm space-y-4">
                               <div className="flex items-center justify-between pb-3 border-b border-sky-200 flex-wrap gap-2">
@@ -1403,7 +1429,7 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                                   </div>
                                   <div>
                                     <div className="text-[10px] font-black text-sky-800 uppercase tracking-wider">
-                                      Specialist Consultation
+                                      SPECIALIST CARE DESTINATION
                                     </div>
                                     <h3 className="text-base font-black text-slate-900">
                                       Consultation Scheduled
@@ -1415,105 +1441,111 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                                 </div>
                                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 flex items-center gap-1.5">
                                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
-                                  Confirmed & Scheduled
+                                  Slot Confirmed
                                 </span>
                               </div>
 
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-4 rounded-xl border border-sky-200 shadow-xs">
                                 <div>
                                   <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
-                                  <span className="font-extrabold text-slate-900 text-sm block">{currentCase.assigned_doctor}</span>
+                                  <span className="font-extrabold text-slate-900 text-sm block">{docName}</span>
                                 </div>
                                 <div>
                                   <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
-                                  <span className="font-bold text-slate-800 block">{currentCase.doctor_speciality || currentCase.department || "General Medicine"}</span>
+                                  <span className="font-bold text-slate-800 block">{docSpeciality}</span>
                                 </div>
                                 <div>
-                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Facility / Centre</span>
-                                  <span className="font-bold text-slate-800 block truncate">{currentCase.facility || "District Civil Hospital"}</span>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital / Centre</span>
+                                  <span className="font-bold text-slate-800 block truncate">{facilityName}</span>
                                 </div>
                                 <div>
-                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Schedule</span>
-                                  <span className="font-bold text-sky-700 block">{currentCase.scheduled_date} • {currentCase.scheduled_time}</span>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Consultation / Visit</span>
+                                  <span className="font-bold text-sky-700 block">{consultSchedule}</span>
                                 </div>
                               </div>
 
-                              {currentCase.facility_address && (
-                                <div className="flex items-center gap-2 text-xs text-slate-600 bg-white/80 p-2.5 rounded-lg border border-sky-100">
-                                  <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                                  <span>Location: <strong>{currentCase.facility_address}</strong></span>
-                                </div>
-                              )}
+                              <div className="flex items-center gap-2 text-xs text-slate-700 bg-white p-3 rounded-xl border border-sky-200">
+                                <MapPin className="w-4 h-4 text-sky-600 shrink-0" />
+                                <span>Full Address: <strong>{facilityAddr}</strong></span>
+                              </div>
 
-                              <div className="p-4 bg-white border border-sky-200 rounded-xl text-xs text-sky-950 leading-relaxed flex items-center justify-between flex-wrap gap-3">
-                                <div className="max-w-md">
-                                  <span className="font-bold block text-sky-900 mb-0.5">Teleconsultation Appointment Confirmed</span>
-                                  Your clinical vitals and symptoms are queued with the specialist. The doctor will connect with you at the scheduled time. Once consultation is completed, your e-prescription and Jan Aushadhi directions will unlock here.
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    className="btn-clinical-primary text-xs py-2 px-3.5 flex items-center gap-1.5 !bg-sky-700 hover:!bg-sky-800"
-                                    onClick={() => setActiveTab("map")}
-                                  >
-                                    <MapPin className="w-3.5 h-3.5" />
-                                    <span>View on Map / Directions</span>
-                                  </button>
-                                </div>
+                              <div className="p-3.5 bg-white border border-sky-200 rounded-xl text-xs text-sky-950 leading-relaxed font-medium">
+                                Please visit <strong>{facilityName}</strong> on <strong>{currentCase.scheduled_date}</strong> at <strong>{currentCase.scheduled_time}</strong> to consult Dr. <strong>{docName}</strong>.
                               </div>
                             </div>
                           );
                         }
 
                         if (isDoctorAssigned) {
+                          const consult = currentCase.consultation || currentCase.vitals?.consultation || {};
+                          const docName = currentCase.assigned_doctor || consult.assigned_doctor || "Dr. Arvind Kulkarni (MD)";
+                          const docSpeciality = currentCase.doctor_speciality || consult.doctor_speciality || currentCase.department || "General Medicine";
+                          const facilityName = currentCase.facility || consult.facility || "District Civil Hospital & Telemedicine Hub";
+                          const facilityAddr = currentCase.facility_address || consult.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001";
+                          const consultSchedule = (currentCase.scheduled_date && currentCase.scheduled_time)
+                            ? `${currentCase.scheduled_date} at ${currentCase.scheduled_time}`
+                            : "Consultation time will be shown once assigned";
+
                           return (
-                            <div key={idx} className="bg-gradient-to-br from-orange-50/80 to-amber-50/60 rounded-2xl p-6 border-2 border-orange-200 shadow-sm space-y-4">
-                              <div className="flex items-center justify-between pb-3 border-b border-orange-200 flex-wrap gap-2">
+                            <div key={idx} className="bg-gradient-to-br from-teal-50/80 to-blue-50/60 rounded-2xl p-6 border-2 border-teal-200 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between pb-3 border-b border-teal-200 flex-wrap gap-2">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center font-bold">
+                                  <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold">
                                     <Clock className="w-4 h-4" />
                                   </div>
                                   <div>
-                                    <div className="text-[10px] font-black text-orange-800 uppercase tracking-wider">
-                                      Specialist Consultation
+                                    <div className="text-[10px] font-black text-teal-800 uppercase tracking-wider">
+                                      SPECIALIST CARE DESTINATION
                                     </div>
                                     <h3 className="text-base font-black text-slate-900">
-                                      Awaiting Consultation Slot
+                                      Specialist Assigned
                                     </h3>
                                     <p className="text-xs text-slate-500 font-mono">
                                       Case #{String(currentCase.case_id || currentCase.id).replace("case-", "").slice(0, 8)}
                                     </p>
                                   </div>
                                 </div>
-                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-100 text-orange-800 border border-orange-300">
-                                  Awaiting Slot Confirmation
+                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-300">
+                                  Synced / Specialist Assigned / Awaiting Slot
                                 </span>
                               </div>
 
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-4 rounded-xl border border-orange-200 shadow-xs">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-4 rounded-xl border border-teal-200 shadow-xs">
                                 <div>
                                   <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
-                                  <span className="font-extrabold text-slate-900 text-sm block">{currentCase.assigned_doctor}</span>
+                                  <span className="font-extrabold text-slate-900 text-sm block">{docName}</span>
                                 </div>
                                 <div>
                                   <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
-                                  <span className="font-bold text-slate-800 block">{currentCase.doctor_speciality || currentCase.department || "General Medicine"}</span>
+                                  <span className="font-bold text-slate-800 block">{docSpeciality}</span>
                                 </div>
                                 <div>
-                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Facility / Centre</span>
-                                  <span className="font-bold text-slate-800 block truncate">{currentCase.facility || "District Telemedicine Centre"}</span>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital / Centre</span>
+                                  <span className="font-bold text-slate-800 block truncate">{facilityName}</span>
                                 </div>
                                 <div>
-                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Schedule</span>
-                                  <span className="font-bold text-orange-700 block">Pending Slot</span>
+                                  <span className="text-slate-500 font-bold uppercase text-[10px] block">Consultation / Visit</span>
+                                  <span className="font-bold text-teal-700 block">{consultSchedule}</span>
                                 </div>
                               </div>
 
-                              <div className="p-3.5 bg-white border border-orange-200 rounded-xl text-xs text-orange-950 leading-relaxed">
-                                Specialist doctor has been assigned to your case. The exact teleconsultation time slot is being finalized and will be confirmed shortly.
+                              <div className="flex items-center gap-2 text-xs text-slate-700 bg-white p-3 rounded-xl border border-teal-200">
+                                <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
+                                <span>Full Address: <strong>{facilityAddr}</strong></span>
+                              </div>
+
+                              <div className="p-3.5 bg-white border border-teal-200 rounded-xl text-xs text-teal-950 leading-relaxed font-medium">
+                                Please visit <strong>{facilityName}</strong> at <strong>{facilityAddr}</strong> for your consultation with Dr. <strong>{docName}</strong>. Consultation time will be shown once assigned.
                               </div>
                             </div>
                           );
                         }
+
+                        const consult = currentCase.consultation || currentCase.vitals?.consultation || {};
+                        const fallbackDoc = currentCase.assigned_doctor || consult.assigned_doctor || "Dr. Arvind Kulkarni (MD)";
+                        const fallbackSpec = currentCase.doctor_speciality || consult.doctor_speciality || currentCase.department || "General Medicine";
+                        const fallbackFacility = currentCase.facility || consult.facility || "District Civil Hospital & Telemedicine Hub";
+                        const fallbackAddr = currentCase.facility_address || consult.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001";
 
                         return (
                           <div key={idx} className="bg-gradient-to-br from-amber-50/80 to-yellow-50/60 rounded-2xl p-6 border-2 border-amber-200 shadow-sm space-y-4">
@@ -1524,10 +1556,10 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                                 </div>
                                 <div>
                                   <div className="text-[10px] font-black text-amber-800 uppercase tracking-wider">
-                                    Specialist Assignment
+                                    SPECIALIST CARE DESTINATION
                                   </div>
                                   <h3 className="text-base font-black text-slate-900">
-                                    Waiting for Specialist Assignment
+                                    Awaiting Specialist Slot
                                   </h3>
                                   <p className="text-xs text-slate-500 font-mono">
                                     Case #{String(currentCase.case_id || currentCase.id).replace("case-", "").slice(0, 8)}
@@ -1535,27 +1567,36 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                                 </div>
                               </div>
                               <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                                Waiting for Specialist
+                                Synced / Specialist Assigned / Awaiting Slot
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-xl border border-amber-200 shadow-xs">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white p-4 rounded-xl border border-amber-200 shadow-xs">
                               <div>
-                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Department</span>
-                                <span className="font-extrabold text-amber-950 text-sm block">{currentCase.department || "General Medicine"}</span>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Doctor</span>
+                                <span className="font-extrabold text-slate-900 text-sm block">{fallbackDoc}</span>
                               </div>
                               <div>
-                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Triage Priority</span>
-                                <span className="font-bold text-slate-800 block">{currentCase.triage_priority || "Routine"}</span>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Speciality</span>
+                                <span className="font-bold text-slate-800 block">{fallbackSpec}</span>
                               </div>
                               <div>
-                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Status</span>
-                                <span className="font-bold text-amber-700 block">Awaiting Specialist</span>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Hospital / Centre</span>
+                                <span className="font-bold text-slate-800 block truncate">{fallbackFacility}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block">Consultation / Visit</span>
+                                <span className="font-bold text-amber-700 block">Consultation time will be shown once assigned</span>
                               </div>
                             </div>
 
-                            <div className="p-3.5 bg-white border border-amber-200 rounded-xl text-xs text-amber-950 leading-relaxed">
-                              We'll show the assigned specialist and consultation time here once confirmed. Your health vitals and intake details have been securely recorded.
+                            <div className="flex items-center gap-2 text-xs text-slate-700 bg-white p-3 rounded-xl border border-amber-200">
+                              <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>Full Address: <strong>{fallbackAddr}</strong></span>
+                            </div>
+
+                            <div className="p-3.5 bg-white border border-amber-200 rounded-xl text-xs text-amber-950 leading-relaxed font-medium">
+                              Please visit <strong>{fallbackFacility}</strong> at <strong>{fallbackAddr}</strong> for your consultation with Dr. <strong>{fallbackDoc}</strong>. Consultation time will be shown once assigned.
                             </div>
                           </div>
                         );
@@ -1579,63 +1620,92 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
                         No previous consultation history found.
                       </div>
                     ) : (
-                      historyCases.map((item: any, idx: number) => (
-                        <div key={idx} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col gap-3">
-                          <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
-                            <div>
-                              <div className="text-sm font-bold text-slate-900">
-                                {item.prescription?.diagnosis || item.translated_symptoms || "Consultation Record"}
-                              </div>
-                              <div className="text-xs text-slate-500 font-mono mt-0.5">
-                                Case #{String(item.case_id || item.id).replace("case-", "").slice(0, 8)} • {item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recorded"}
-                              </div>
-                            </div>
-                            <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold border ${item.status === "completed"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : item.status === "scheduled" ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200"
-                              }`}>
-                              {item.status === "completed" ? "Completed" : item.status === "scheduled" ? "Scheduled" : "Pending"}
-                            </span>
-                          </div>
+                      historyCases.map((item: any, idx: number) => {
+                        const consult = item.consultation || item.vitals?.consultation || {};
+                        const doctor_name = item.assigned_doctor || (item.prescription && (item.prescription.doctor_name || item.prescription.prescribed_by)) || consult.assigned_doctor || "Dr. Arvind Kulkarni (MD)";
+                        const speciality = item.doctor_speciality || consult.doctor_speciality || item.department || "General Medicine";
+                        const facility = item.facility || consult.facility || "District Civil Hospital & Telemedicine Hub";
+                        const facility_address = item.facility_address || consult.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001";
+                        const caseDate = item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recorded";
+                        const appointmentTime = (item.scheduled_date && item.scheduled_time) ? `${item.scheduled_date} at ${item.scheduled_time}` : (item.scheduled_date || "Consultation time will be shown once assigned");
+                        const isDone = item.status === "completed";
+                        const isSched = item.status === "scheduled";
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                            <div>
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">Doctor</span>
-                              <span className="font-bold text-slate-800 block">{item.assigned_doctor || (item.prescription && item.prescription.doctor_name) || "Attending Specialist"}</span>
-                            </div>
-                            <div>
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">Department</span>
-                              <span className="font-bold text-slate-800 block">{item.doctor_speciality || item.department || "General Medicine"}</span>
-                            </div>
-                            <div className="md:col-span-2">
-                              <span className="text-slate-400 font-bold uppercase text-[10px] block">Appointment</span>
-                              <span className="font-bold text-slate-800 block">
-                                {item.scheduled_date ? `${item.scheduled_date} ${item.scheduled_time || ''}` : 'N/A'}
+                        return (
+                          <div key={idx} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col gap-3">
+                            <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100 flex-wrap">
+                              <div>
+                                <div className="text-sm font-bold text-slate-900">
+                                  {item.prescription?.diagnosis || item.translated_symptoms || "Clinical Consultation"}
+                                </div>
+                                <div className="text-xs text-slate-500 font-mono mt-0.5">
+                                  Case #{String(item.case_id || item.id).replace("case-", "").slice(0, 8)} • {caseDate}
+                                </div>
+                              </div>
+                              <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold border ${isDone
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : isSched ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-teal-50 text-teal-700 border-teal-200"
+                                }`}>
+                                {isDone ? "Completed" : isSched ? "Scheduled" : "Specialist Assigned / Awaiting Slot"}
                               </span>
                             </div>
-                          </div>
 
-                          {item.prescription?.medicines && item.prescription.medicines.length > 0 && (
-                            <div className="mt-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                              <span className="text-slate-500 font-bold uppercase text-[10px] block mb-2">Prescribed Medicines</span>
-                              <div className="space-y-2">
-                                {item.prescription.medicines.map((m: any, mIdx: number) => (
-                                  <div key={mIdx} className="flex justify-between items-start text-xs border-b border-slate-200/60 pb-1.5 last:border-0 last:pb-0">
-                                    <div className="font-semibold text-slate-800">{m.name}</div>
-                                    <div className="text-slate-600 text-right">{m.dosage} • {m.duration}</div>
-                                  </div>
-                                ))}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
+                              <div>
+                                <span className="text-slate-400 font-bold uppercase text-[10px] block">Specialist</span>
+                                <span className="font-bold text-slate-800 block">{doctor_name}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-bold uppercase text-[10px] block">Department</span>
+                                <span className="font-bold text-slate-800 block">{speciality}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-bold uppercase text-[10px] block">Facility</span>
+                                <span className="font-bold text-slate-800 block truncate">{facility}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-bold uppercase text-[10px] block">Consultation / Visit</span>
+                                <span className="font-bold text-slate-800 block">{appointmentTime}</span>
                               </div>
                             </div>
-                          )}
-                          
-                          {item.prescription?.notes && (
-                            <div className="mt-1 text-xs text-slate-600">
-                              <span className="font-bold text-slate-700">Notes:</span> {item.prescription.notes}
+
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>Full Address: <strong>{facility_address}</strong></span>
                             </div>
-                          )}
-                        </div>
-                      ))
+
+                            {item.prescription?.diagnosis && (
+                              <div className="text-xs text-slate-700">
+                                <span className="font-bold text-slate-800">Doctor Diagnosis:</span> {item.prescription.diagnosis}
+                              </div>
+                            )}
+
+                            {item.prescription?.medicines && item.prescription.medicines.length > 0 ? (
+                              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <span className="text-slate-500 font-bold uppercase text-[10px] block mb-2">Prescribed Medicines</span>
+                                <div className="space-y-2">
+                                  {item.prescription.medicines.map((m: any, mIdx: number) => (
+                                    <div key={mIdx} className="flex justify-between items-start text-xs border-b border-slate-200/60 pb-1.5 last:border-0 last:pb-0">
+                                      <div className="font-semibold text-slate-800">{m.name}</div>
+                                      <div className="text-slate-600 text-right">{m.dosage} • {m.duration}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-600 bg-teal-50/60 p-2.5 rounded-lg border border-teal-100">
+                                Please visit <strong>{facility}</strong> at <strong>{facility_address}</strong> for your consultation with Dr. <strong>{doctor_name}</strong>.
+                              </div>
+                            )}
+
+                            {item.prescription?.notes && (
+                              <div className="text-xs text-slate-600">
+                                <span className="font-bold text-slate-700">Notes:</span> {item.prescription.notes}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 )}

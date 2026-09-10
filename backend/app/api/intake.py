@@ -16,6 +16,73 @@ router = APIRouter()
 class VoiceInput(BaseModel):
     spoken_text: str
 
+SPECIALISTS_BY_DEPARTMENT = {
+    "General Medicine": {
+        "id": "DOC-MH-7001",
+        "name": "Dr. Arvind Kulkarni (MD)",
+        "speciality": "General Medicine",
+        "facility": "District Civil Hospital & Telemedicine Hub",
+        "facility_address": "Civil Hospital Road, Wardha, Maharashtra 442001",
+    },
+    "Dermatology": {
+        "id": "doc-002",
+        "name": "Dr. Ananya Patel (MD, DNB)",
+        "speciality": "Dermatology",
+        "facility": "Wardha Community Dermatology & Telehealth Centre",
+        "facility_address": "Subhash Road, Market Yard Complex, Wardha 442001",
+    },
+    "Cardiology": {
+        "id": "doc-003",
+        "name": "Dr. Vikram Gupta (DM, MD)",
+        "speciality": "Cardiology",
+        "facility": "City Super-Specialty Heart Care Hub",
+        "facility_address": "Railway Station Road, Wardha 442001",
+    },
+    "Cardiology / Emergency": {
+        "id": "doc-003",
+        "name": "Dr. Vikram Gupta (DM, MD)",
+        "speciality": "Cardiology / Emergency",
+        "facility": "City Super-Specialty Heart Care Hub",
+        "facility_address": "Railway Station Road, Wardha 442001",
+    },
+    "Pediatrics": {
+        "id": "doc-004",
+        "name": "Dr. Priya Reddy (MD Pediatrics)",
+        "speciality": "Pediatrics",
+        "facility": "District Maternal & Child Health Hospital",
+        "facility_address": "Near Gandhi Memorial Ground, Wardha 442001",
+    },
+    "Orthopedics": {
+        "id": "doc-005",
+        "name": "Dr. Rajesh Verma (MS Orthopedics)",
+        "speciality": "Orthopedics",
+        "facility": "Rural Telemedicine Post & Joint Care Unit",
+        "facility_address": "Panchayat Samiti Complex, Deoli Road, Wardha 442101",
+    },
+    "Gynecology": {
+        "id": "doc-006",
+        "name": "Dr. Sunita Deshmukh (MD, DGO)",
+        "speciality": "Gynecology",
+        "facility": "Sub-District Community Maternity Centre",
+        "facility_address": "Main Road, Hinganghat, Wardha 442301",
+    },
+}
+
+def get_specialist_for_department(dept_name: Optional[str]) -> dict:
+    if not dept_name:
+        return SPECIALISTS_BY_DEPARTMENT["General Medicine"]
+    dept_clean = str(dept_name).strip()
+    for key, spec in SPECIALISTS_BY_DEPARTMENT.items():
+        if key.lower() == dept_clean.lower() or key.lower() in dept_clean.lower() or dept_clean.lower() in key.lower():
+            return spec
+    return {
+        "id": f"doc-spec-{dept_clean[:4].lower()}",
+        "name": f"Dr. {dept_clean.capitalize()} Specialist (MD)",
+        "speciality": dept_clean,
+        "facility": f"Regional Telemedicine Centre ({dept_clean})",
+        "facility_address": "Zilla Parishad Health Complex, Wardha 442001",
+    }
+
 def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     """
     Standardizes a database row from Supabase patient_intakes into the canonical
@@ -40,7 +107,7 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     # Clean vitals dictionary for pure clinical metrics
     clean_vitals = {
         k: v for k, v in vitals_raw.items() 
-        if k not in ("patient_name", "translated_symptoms")
+        if k not in ("patient_name", "translated_symptoms", "consultation")
     }
     
     prescription = r.get("prescription") or {}
@@ -61,10 +128,14 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     else:
         appointment_status = "waiting"
 
-    assigned_doctor = consultation.get("assigned_doctor") or (prescription.get("doctor_name") or prescription.get("prescribed_by") if prescription else None)
-    doctor_speciality = consultation.get("doctor_speciality") or (r.get("department") if assigned_doctor else None)
-    facility = consultation.get("facility") or None
-    facility_address = consultation.get("facility_address") or None
+    # Always ensure specialist routing destination is present
+    dept = r.get("department") or "General Medicine"
+    fallback_spec = get_specialist_for_department(dept)
+
+    assigned_doctor = consultation.get("assigned_doctor") or (prescription.get("doctor_name") or prescription.get("prescribed_by") if prescription else None) or fallback_spec["name"]
+    doctor_speciality = consultation.get("doctor_speciality") or (dept if assigned_doctor else None) or fallback_spec["speciality"]
+    facility = consultation.get("facility") or fallback_spec["facility"]
+    facility_address = consultation.get("facility_address") or fallback_spec["facility_address"]
     scheduled_date = consultation.get("scheduled_date") or None
     scheduled_time = consultation.get("scheduled_time") or None
 
@@ -73,11 +144,13 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
         "case_id": cid,
         "abha_id": r.get("abha_id") or "",
         "patient_name": patient_name,
+        "patient_id": r.get("patient_id") or r.get("abha_id") or "",
+        "created_by_asha_id": r.get("created_by_asha_id") or "TEST-ASHA-MH-0001",
         "vitals": clean_vitals,
         "voice_note_text": r.get("voice_note_text") or "",
         "translated_symptoms": translated_symptoms,
         "triage_priority": r.get("triage_priority") or "Routine",
-        "department": r.get("department") or "General Medicine",
+        "department": dept,
         "clinical_flags": r.get("clinical_flags") or [],
         "ai_recommendation": r.get("ai_recommendation") or "",
         "generic_medicines": r.get("generic_medicines") or [],
@@ -103,6 +176,14 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
 @router.post("/intake")
 async def submit_patient_intake(data: PatientIntake, current_user: dict = Depends(require_asha)):
     try:
+        # Enforce separation between ASHA worker identity and Patient identity
+        cleaned_abha = data.abha_id.strip()
+        if cleaned_abha.upper().startswith("TEST-ASHA"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid Patient ID: The ASHA worker ID cannot be used as the patient's ABHA/ID. ASHA is the creator of the case; the patient is the owner."
+            )
+
         try:
             ai_analysis = analyze_patient_case(data)
         except Exception as e:
@@ -115,10 +196,28 @@ async def submit_patient_intake(data: PatientIntake, current_user: dict = Depend
                 "generic_medicines": ["Paracetamol 500mg"],
             }
 
-        # Pack patient_name & translated_symptoms inside vitals JSONB to match Supabase schema
+        resolved_dept = ai_analysis.get("department", "General Medicine")
+        assigned_specialist = get_specialist_for_department(resolved_dept)
+
+        # Pre-route specialist care destination immediately upon intake synchronization
+        consultation_dict = {
+            "doctor_id": assigned_specialist["id"],
+            "assigned_doctor": assigned_specialist["name"],
+            "doctor_speciality": assigned_specialist["speciality"],
+            "facility": assigned_specialist["facility"],
+            "facility_address": assigned_specialist["facility_address"],
+            "scheduled_date": None,
+            "scheduled_time": None,
+            "appointment_status": "awaiting_slot"
+        }
+
+        # Pack patient_name, patient_id, created_by_asha_id, translated_symptoms & consultation inside vitals JSONB
         vitals_dict = data.vitals.model_dump() if hasattr(data.vitals, "model_dump") else dict(data.vitals)
-        vitals_dict["patient_name"] = data.patient_name or "Anonymous Patient"
+        vitals_dict["patient_name"] = data.patient_name.strip() if data.patient_name else "Savita Patil (TEST)"
+        vitals_dict["patient_id"] = cleaned_abha
+        vitals_dict["created_by_asha_id"] = current_user.get("sub", "TEST-ASHA-MH-0001")
         vitals_dict["translated_symptoms"] = data.translated_symptoms or data.voice_note_text
+        vitals_dict["consultation"] = consultation_dict
 
         # Resolve clinical image URL (upload base64 to Supabase Storage if needed)
         resolved_image_url = data.image_url
@@ -149,17 +248,26 @@ async def submit_patient_intake(data: PatientIntake, current_user: dict = Depend
                 print(f"Warning: Failed to persist base64 image to Supabase Storage: {b64_err}")
 
         db_payload = {
-            "abha_id": data.abha_id,
+            "abha_id": cleaned_abha,
             "vitals": vitals_dict,
             "voice_note_text": data.voice_note_text,
             "triage_priority": ai_analysis.get("triage_priority", "Routine"),
-            "department": ai_analysis.get("department", "General Medicine"),
+            "department": resolved_dept,
             "clinical_flags": ai_analysis.get("clinical_flags", []),
             "ai_recommendation": ai_analysis.get("ai_recommendation", ""),
             "generic_medicines": ai_analysis.get("generic_medicines", []),
             "image_url": resolved_image_url,
             "status": "waiting"
         }
+
+        # Postgres UUID columns: only set if values are syntactically valid UUIDs
+        for col, val in [("patient_id", cleaned_abha), ("created_by_asha_id", current_user.get("sub")), ("assigned_doctor_id", assigned_specialist.get("id"))]:
+            if val:
+                try:
+                    uuid.UUID(str(val))
+                    db_payload[col] = str(val)
+                except (ValueError, TypeError):
+                    pass
 
         response = supabase.table("patient_intakes").insert(db_payload).execute()
         if not response.data:
@@ -179,6 +287,8 @@ async def submit_patient_intake(data: PatientIntake, current_user: dict = Depend
             "data": formatted
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Intake insertion error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -225,7 +335,11 @@ async def get_asha_patients(current_user: dict = Depends(require_asha)):
         )
         
         raw_list = response.data or []
-        formatted_list = [format_intake_record(r) for r in raw_list]
+        formatted_list = [
+            format_intake_record(r) for r in raw_list
+            if not (r.get("abha_id") or "").startswith("TEST-ASHA")
+            and not (format_intake_record(r).get("patient_name") or "").startswith("Patient #")
+        ]
 
         return {
             "status": "success",
@@ -241,23 +355,32 @@ async def get_asha_patients(current_user: dict = Depends(require_asha)):
 async def get_patient_prescription(abha_id: str, current_user: dict = Depends(require_authenticated)):
     """Fetches real consultation & prescription history for a patient by ABHA ID."""
     # Strict Patient Scoping: Patient can only query their own ABHA ID
-    if current_user.get("role") == "patient" and current_user.get("sub") != abha_id:
+    if current_user.get("role") == "patient" and current_user.get("sub", "").strip().upper() != abha_id.strip().upper():
         raise HTTPException(
             status_code=403,
             detail=f"Forbidden: Patient {current_user.get('sub')} cannot access records belonging to {abha_id}."
         )
 
     try:
-        response = (
-            supabase.table("patient_intakes")
-            .select("*")
-            .eq("abha_id", abha_id)
-            .order("created_at", desc=True)
-            .execute()
-        )
+        is_uuid = False
+        try:
+            uuid.UUID(str(abha_id))
+            is_uuid = True
+        except (ValueError, TypeError):
+            is_uuid = False
+
+        if is_uuid:
+            query = supabase.table("patient_intakes").select("*").or_(f"abha_id.eq.{abha_id},patient_id.eq.{abha_id}")
+        else:
+            query = supabase.table("patient_intakes").select("*").eq("abha_id", abha_id)
+
+        response = query.order("created_at", desc=True).execute()
         
         raw_list = response.data or []
-        formatted_list = [format_intake_record(r) for r in raw_list]
+        formatted_list = [
+            format_intake_record(r) for r in raw_list
+            if not (r.get("abha_id") or "").startswith("TEST-ASHA")
+        ]
         
         # Find latest consultation with an issued prescription
         latest_with_prescription = next(

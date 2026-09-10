@@ -182,7 +182,7 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
     },
   }[language];
 
-  const urgentCount = submittedIntakes.filter((i) => i.triage_priority === "High").length;
+  const urgentCount = submittedIntakes.filter((i) => ["high", "urgent"].includes((i.triage_priority || "").toLowerCase())).length;
 
   // Web Speech API Voice Search for Facility Map
   const handleMapVoiceSearch = () => {
@@ -302,7 +302,7 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
             </div>
             <div className="stat-card stat-card--coral">
               <div className="stat-card__icon"><AlertTriangle className="w-4 h-4" /></div>
-              <div className="stat-card__value">{urgentCount > 0 ? urgentCount : 1}</div>
+              <div className="stat-card__value">{urgentCount}</div>
               <div className="stat-card__label">{t.urgentCases}</div>
             </div>
           </div>
