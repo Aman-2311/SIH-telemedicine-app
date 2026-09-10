@@ -222,7 +222,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          "vendor-react": ["react", "react-dom"],
+          // react + react-dom MUST be in the same chunk.
+          // Splitting them causes TDZ crashes because react-dom has
+          // circular internal references into react core.
+          "vendor-react": ["react", "react-dom", "react/jsx-runtime", "react-dom/client"],
           "vendor-zustand": ["zustand"],
           "vendor-lucide": ["lucide-react"],
           "vendor-axios": ["axios"],
@@ -250,7 +253,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: "http://127.0.0.1:8001",
         changeOrigin: true,
       },
     },
