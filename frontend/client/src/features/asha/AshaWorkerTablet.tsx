@@ -53,6 +53,17 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
   const [activeTab, setActiveTab] = useState<AshaTab>("home");
   const [selectedCase, setSelectedCase] = useState<SubmittedIntakeRecord | null>(null);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+
+  // Keep selectedCase in sync with submittedIntakes (e.g. when automatic sync updates it)
+  useEffect(() => {
+    if (selectedCase) {
+      const match = submittedIntakes.find((i) => String(i.id) === String(selectedCase.id) || String(i.case_id) === String(selectedCase.case_id));
+      if (match && (match.synced !== selectedCase.synced || match.case_id !== selectedCase.case_id || match.status !== selectedCase.status)) {
+        setSelectedCase(match);
+      }
+    }
+  }, [submittedIntakes, selectedCase]);
+
   const [mapFilter, setMapFilter] = useState<"all" | "pharmacy" | "hospital" | "doctor">("all");
   const [mapSearchQuery, setMapSearchQuery] = useState("");
   const [isVoiceSearching, setIsVoiceSearching] = useState(false);

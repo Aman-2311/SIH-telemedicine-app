@@ -392,7 +392,7 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
   },
 
   syncPendingIntake: async (id: string) => {
-    const item = get().submittedIntakes.find((i) => i.id === id);
+    const item = get().submittedIntakes.find((i) => String(i.id) === String(id) || String(i.case_id) === String(id));
     if (!item) return { success: false, message: "Record not found" };
 
     const payload: IntakePayload = {

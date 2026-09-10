@@ -9,9 +9,20 @@ const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
   if (envUrl) return envUrl;
   
+  // If Vite is in dev mode, ALWAYS use proxy
+  if (import.meta.env.DEV) {
+    return "";
+  }
+  
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".local")) {
+    if (
+      hostname === "localhost" || 
+      hostname === "127.0.0.1" || 
+      hostname.endsWith(".local") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.")
+    ) {
       return "";
     }
   }
