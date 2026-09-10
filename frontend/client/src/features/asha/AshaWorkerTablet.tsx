@@ -54,6 +54,10 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
   const [selectedCase, setSelectedCase] = useState<SubmittedIntakeRecord | null>(null);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
 
+  const { user } = useAuthStore();
+  const { facilities, getUserLocation, fetchNearbyFacilities } = useFacilityStore();
+  const { submittedIntakes, fetchRecentIntakes } = useIntakeStore();
+
   // Keep selectedCase in sync with submittedIntakes (e.g. when automatic sync updates it)
   useEffect(() => {
     if (selectedCase) {
@@ -69,10 +73,6 @@ export const AshaWorkerTablet: React.FC<AshaWorkerTabletProps> = ({
   const [isVoiceSearching, setIsVoiceSearching] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<"active" | "unavailable" | "checking">("checking");
   const [pendingIntakes, setPendingIntakes] = useState<OfflineIntake[]>([]);
-
-  const { user } = useAuthStore();
-  const { facilities, getUserLocation, fetchNearbyFacilities } = useFacilityStore();
-  const { submittedIntakes, fetchRecentIntakes } = useIntakeStore();
 
   const voiceRecognitionRef = useRef<any>(null);
 
