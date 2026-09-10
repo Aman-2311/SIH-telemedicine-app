@@ -287,13 +287,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       list = list.filter(
         (c) =>
           (c.patient_name || "").toLowerCase().includes(q) ||
-          (c.case_id || c.id || "").toLowerCase().includes(q) ||
+          (c.case_id || "").toString().includes(q) ||
+          (c.id || "").toString().includes(q) ||
           (c.abha_id || "").toLowerCase().includes(q) ||
+          (c.translated_symptoms || "").toLowerCase().includes(q) ||
           (c.department || "").toLowerCase().includes(q)
       );
     }
 
-    // Sort order (Today's active cases prioritized, then priority tier, then newest first)
+    // Sort order
     if (sortBy === "priority") {
       const todayPrefix = new Date().toISOString().split("T")[0];
       const pWeights: Record<string, number> = { urgent: 3, high: 3, moderate: 2, medium: 2, routine: 1, low: 1 };
@@ -308,12 +310,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
-    } else if (sortBy === "waiting") {
-      list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    } else if (sortBy === "wait_time") {
+      list.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()); // Oldest first
+    } else if (sortBy === "recent") {
+      list.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()); // Newest first
     }
 
     return list;
   }, [allCases, filterPriority, deptFilter, searchQuery, sortBy]);
+
+  // Compute 3 newest cases for the "Newly Received" dashboard section
+  const newestCases = useMemo(() => {
+    return [...allCases]
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      .slice(0, 3);
+  }, [allCases]);
 
   // Active patient for clinical workspace
   const currentCase = useMemo(() => {
@@ -790,6 +801,116 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Left 65%: Requires Your Attention */}
                 <div className="lg:col-span-8 space-y-4">
+                  {/* NEWLY RECEIVED SECTION */}
+                  {newestCases.length > 0 && (
+                    <div className="space-y-4 mb-8">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h2 className="text-base font-bold text-slate-900">
+                            Newly Received
+                          </h2>
+                          <p className="text-sm text-slate-500 mt-0.5">
+                            Most recent cases waiting for review
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {newestCases.map((item) => {
+                          const isUrgent = ["urgent", "high"].includes(
+                            (item.triage_priority || "").toLowerCase()
+                          );
+                          const isModerate = ["moderate", "medium"].includes(
+                            (item.triage_priority || "").toLowerCase()
+                          );
+
+                          return (
+                            <div
+                              key={`new-${item.case_id || item.id}`}
+                              className={`priority-clinical-card ${isUrgent ? "priority-card-urgent" : isModerate ? "priority-card-moderate" : ""}`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 pb-3.5 border-b border-slate-100">
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <div
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isUrgent
+                                      ? "bg-rose-100 text-rose-800 ring-2 ring-rose-200"
+                                      : isModerate
+                                        ? "bg-amber-100 text-amber-800 ring-2 ring-amber-200"
+                                        : "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
+                                      }`}
+                                  >
+                                    {(item.patient_name || "P")[0]}
+                                    {(item.patient_name || "P").split(" ")[1]?.[0] || ""}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2.5 flex-wrap">
+                                      <h3 className="text-lg font-bold text-slate-900 truncate">
+                                        {item.patient_name}
+                                      </h3>
+                                      <span
+                                        className={`text-xs font-bold px-2.5 py-1 rounded-full ${isUrgent
+                                          ? "bg-rose-100 text-rose-800 border border-rose-200"
+                                          : isModerate
+                                            ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                            : "bg-slate-100 text-slate-800 border border-slate-200"
+                                          }`}
+                                      >
+                                        {item.triage_priority} Priority
+                                      </span>
+                                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                        NEW
+                                      </span>
+                                    </div>
+
+                                    <div className="text-sm text-slate-500 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                                      <span>{item.age} yrs • {item.gender}</span>
+                                      <span>•</span>
+                                      <span className="font-mono text-slate-700 font-semibold">
+                                        Case #{item.case_id || item.id}
+                                      </span>
+                                      <span>•</span>
+                                      <span className="text-slate-500">{formatWaitingMinutes(item.created_at)} waiting</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={() => handleOpenPatient(item)}
+                                  className="btn-clinical-primary text-xs shrink-0 self-start sm:self-center"
+                                >
+                                  <span>Review Case</span>
+                                </button>
+                              </div>
+
+                              <div className="pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="text-sm text-slate-700 leading-relaxed min-w-0 flex items-center gap-2.5">
+                                  <span className="font-bold text-slate-800 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md text-xs shrink-0">
+                                    {item.department}
+                                  </span>
+                                  <span className="truncate text-slate-600">{item.translated_symptoms}</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                  <span className="vital-pill">
+                                    BP: <strong className="text-slate-900 font-mono">{item.vitals?.bp || "--"}</strong>
+                                  </span>
+                                  <span className="vital-pill">
+                                    Temp: <strong className="text-slate-900 font-mono">{item.vitals?.temp ? `${item.vitals.temp}°F` : "--"}</strong>
+                                  </span>
+                                  <span className="vital-pill">
+                                    Pulse: <strong className="text-slate-900 font-mono">{item.vitals?.pulse ? `${item.vitals.pulse} bpm` : "--"}</strong>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h2 className="text-base font-bold text-slate-900">
