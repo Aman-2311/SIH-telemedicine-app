@@ -219,6 +219,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-zustand": ["zustand"],
+          "vendor-lucide": ["lucide-react"],
+          "vendor-axios": ["axios"],
+          "vendor-dexie": ["dexie"],
+        },
+      },
+    },
   },
   server: {
     port: 3000,
