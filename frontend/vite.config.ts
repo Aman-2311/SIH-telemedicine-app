@@ -230,20 +230,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    minify: true,
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
-          // react + react-dom MUST be in the same chunk.
-          // Splitting them causes TDZ crashes because react-dom has
-          // circular internal references into react core.
-          "vendor-react": ["react", "react-dom", "react/jsx-runtime", "react-dom/client"],
-          "vendor-zustand": ["zustand"],
-          "vendor-lucide": ["lucide-react"],
-          "vendor-axios": ["axios"],
-          "vendor-dexie": ["dexie"],
-        },
-      },
-    },
+          'vendor-react': ['react', 'react-dom', 'wouter'],
+          'vendor-lucide': ['lucide-react']
+        }
+      }
+    }
   },
   server: {
     port: 3000,

@@ -252,7 +252,7 @@ export const PatientPortal: React.FC<PatientPortalProps> = ({
   };
 
   // AI Chat prompt sender with Live Gemini & Offline Fallback
-  const handleSendChat = async (textToSend?: string) => {
+  async function handleSendChat(textToSend?: string) {
     const query = (textToSend || chatInput).trim();
     if (!query) return;
 
