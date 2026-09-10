@@ -44,11 +44,7 @@ async def get_patient_queue(current_user: dict = Depends(require_doctor)):
             .execute()
         )
         raw_data = response.data or []
-        formatted_data = [
-            format_intake_record(r) for r in raw_data
-            if not (r.get("abha_id") or "").startswith("TEST-ASHA")
-            and not (format_intake_record(r).get("patient_name") or "").startswith("Patient #")
-        ]
+        formatted_data = [format_intake_record(r) for r in raw_data]
     except Exception as e:
         print(f"Error fetching waiting queue from Supabase: {e}")
         formatted_data = []

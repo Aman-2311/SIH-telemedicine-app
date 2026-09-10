@@ -94,20 +94,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           : "DOC-MH-7001");
 
       const user: UserInfo = {
-        abha_id: defaultAbha,
+        abha_id: response.data.user?.abha_id || defaultAbha,
         role: payload.role,
         full_name:
-          payload.role === "asha"
-            ? "Sunita Patil (TEST)"
+          response.data.user?.full_name ||
+          (payload.role === "asha"
+            ? "ASHA Worker"
             : payload.role === "doctor"
             ? "Dr. Arvind Kulkarni (MD)"
-            : "Savita Patil (TEST)",
+            : "Patient"),
         phone_number:
-          payload.role === "asha"
-            ? "+91 90000 10001"
+          response.data.user?.phone_number ||
+          (payload.role === "asha"
+            ? "+91 98200 10001"
             : payload.role === "patient"
-            ? "+91 90000 10002"
-            : "+91 90000 10003",
+            ? "+91 98200 10002"
+            : "+91 98200 10003"),
       };
 
       localStorage.setItem("sahara_access_token", token);
@@ -127,9 +129,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const defaultAbha =
         payload.abha_id ||
         (payload.role === "asha"
-          ? "TEST-ASHA-MH-0001"
+          ? "ASHA-MH-0001"
           : payload.role === "patient"
-          ? "TEST-PATIENT-MH-0002"
+          ? "PATIENT-MH-0002"
           : "DOC-MH-7001");
 
       const user: UserInfo = {
@@ -137,16 +139,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         role: payload.role,
         full_name:
           payload.role === "asha"
-            ? "Sunita Patil (TEST)"
+            ? "ASHA Worker"
             : payload.role === "doctor"
             ? "Dr. Arvind Kulkarni (MD)"
-            : "Savita Patil (TEST)",
+            : "Patient",
         phone_number:
           payload.role === "asha"
-            ? "+91 90000 10001"
+            ? "+91 98200 10001"
             : payload.role === "patient"
-            ? "+91 90000 10002"
-            : "+91 90000 10003",
+            ? "+91 98200 10002"
+            : "+91 98200 10003",
       };
 
       localStorage.setItem("sahara_access_token", fallbackToken);

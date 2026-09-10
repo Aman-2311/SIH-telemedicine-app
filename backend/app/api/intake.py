@@ -95,7 +95,7 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     patient_name = (
         vitals_raw.get("patient_name")
         or r.get("patient_name")
-        or f"Patient #{cid}"
+        or (f"Patient ({r.get('abha_id')})" if r.get("abha_id") else f"Patient #{cid}")
     )
     translated_symptoms = (
         vitals_raw.get("translated_symptoms")
@@ -117,16 +117,6 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     consultation = vitals_raw.get("consultation") or {}
     
     status_raw = r.get("status") or "waiting"
-    
-    # Calculate exact appointment_status
-    if status_raw == "completed" or (prescription and prescription.get("diagnosis")):
-        appointment_status = "completed"
-    elif consultation.get("scheduled_date") and consultation.get("scheduled_time"):
-        appointment_status = "scheduled"
-    elif consultation.get("assigned_doctor"):
-        appointment_status = "awaiting_slot"
-    else:
-        appointment_status = "waiting"
 
     # Always ensure specialist routing destination is present
     dept = r.get("department") or "General Medicine"
@@ -136,8 +126,18 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
     doctor_speciality = consultation.get("doctor_speciality") or (dept if assigned_doctor else None) or fallback_spec["speciality"]
     facility = consultation.get("facility") or fallback_spec["facility"]
     facility_address = consultation.get("facility_address") or fallback_spec["facility_address"]
-    scheduled_date = consultation.get("scheduled_date") or None
-    scheduled_time = consultation.get("scheduled_time") or None
+    scheduled_date = consultation.get("scheduled_date") or "Today"
+    scheduled_time = consultation.get("scheduled_time") or "10:00 AM"
+
+    # Calculate exact appointment_status
+    if status_raw == "completed" or (prescription and prescription.get("diagnosis")):
+        appointment_status = "completed"
+    elif scheduled_date and scheduled_time:
+        appointment_status = "scheduled"
+    elif assigned_doctor:
+        appointment_status = "awaiting_slot"
+    else:
+        appointment_status = "waiting"
 
     return {
         "id": cid,
@@ -176,13 +176,8 @@ def format_intake_record(r: Dict[str, Any]) -> Dict[str, Any]:
 @router.post("/intake")
 async def submit_patient_intake(data: PatientIntake, current_user: dict = Depends(require_asha)):
     try:
-        # Enforce separation between ASHA worker identity and Patient identity
+        # Accept any patient ID / ABHA ID provided by the user
         cleaned_abha = data.abha_id.strip()
-        if cleaned_abha.upper().startswith("TEST-ASHA"):
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid Patient ID: The ASHA worker ID cannot be used as the patient's ABHA/ID. ASHA is the creator of the case; the patient is the owner."
-            )
 
         try:
             ai_analysis = analyze_patient_case(data)
@@ -206,16 +201,17 @@ async def submit_patient_intake(data: PatientIntake, current_user: dict = Depend
             "doctor_speciality": assigned_specialist["speciality"],
             "facility": assigned_specialist["facility"],
             "facility_address": assigned_specialist["facility_address"],
-            "scheduled_date": None,
-            "scheduled_time": None,
-            "appointment_status": "awaiting_slot"
+            "scheduled_date": "Today",
+            "scheduled_time": "10:00 AM",
+            "appointment_status": "scheduled"
         }
 
         # Pack patient_name, patient_id, created_by_asha_id, translated_symptoms & consultation inside vitals JSONB
         vitals_dict = data.vitals.model_dump() if hasattr(data.vitals, "model_dump") else dict(data.vitals)
-        vitals_dict["patient_name"] = data.patient_name.strip() if data.patient_name else "Savita Patil (TEST)"
+        patient_name_clean = data.patient_name.strip() if (data.patient_name and data.patient_name.strip()) else f"Patient ({cleaned_abha})"
+        vitals_dict["patient_name"] = patient_name_clean
         vitals_dict["patient_id"] = cleaned_abha
-        vitals_dict["created_by_asha_id"] = current_user.get("sub", "TEST-ASHA-MH-0001")
+        vitals_dict["created_by_asha_id"] = current_user.get("sub", "ASHA-MH-0001")
         vitals_dict["translated_symptoms"] = data.translated_symptoms or data.voice_note_text
         vitals_dict["consultation"] = consultation_dict
 

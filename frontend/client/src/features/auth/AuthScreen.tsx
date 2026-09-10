@@ -60,13 +60,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     clearError();
     setSelectedRole(role);
     if (role === "asha") {
-      setPhone("9000010001");
-      setFullName("Sunita Patil (TEST)");
+      setPhone("9820010001");
+      setFullName("ASHA Health Worker");
     } else if (role === "patient") {
-      setPhone("9000010002");
-      setFullName("Savita Patil (TEST)");
+      setPhone("9820010002");
+      setFullName("Patient");
     } else {
-      setPhone("9000010003");
+      setPhone("9820010003");
       setFullName("Dr. Arvind Kulkarni (MD)");
     }
     setStep("login");
@@ -109,9 +109,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     } else {
       const canonicalId =
         selectedRole === "asha"
-          ? "TEST-ASHA-MH-0001"
+          ? (phone ? `ASHA-MH-${phone.slice(-4)}` : "ASHA-MH-0001")
           : selectedRole === "patient"
-            ? "TEST-PATIENT-MH-0002"
+            ? (phone ? `PATIENT-MH-${phone.slice(-4)}` : "PATIENT-MH-0002")
             : "DOC-MH-7001";
 
       const ok = await login({ abha_id: canonicalId, role: selectedRole });
@@ -252,9 +252,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <div className="auth-demo-note">
               <Sparkles className="w-3.5 h-3.5" />
               <span>
-                {selectedRole === "asha" && "Test Account: Sunita Patil (TEST) • TEST-ASHA-MH-0001"}
-                {selectedRole === "patient" && "Test Account: Savita Patil (TEST) • TEST-PATIENT-MH-0002"}
-                {selectedRole === "doctor" && "Test Account: Dr. Arvind Kulkarni (MD) • DOC-MH-7001"}
+                {selectedRole === "asha" && "ASHA Telemedicine Access • Instant OTP Verification"}
+                {selectedRole === "patient" && "Patient Digital Health Portal • Instant OTP Verification"}
+                {selectedRole === "doctor" && "Doctor Clinical Workstation • Instant OTP Verification"}
               </span>
             </div>
 

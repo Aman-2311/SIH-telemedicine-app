@@ -120,6 +120,51 @@ const initialVitals: Vitals = {
   weight: "",
 };
 
+const SPECIALISTS_FOR_INTAKE: Record<string, { name: string; speciality: string; facility: string; facility_address: string }> = {
+  "General Medicine": {
+    name: "Dr. Arvind Kulkarni (MD)",
+    speciality: "General Medicine",
+    facility: "District Civil Hospital & Telemedicine Hub",
+    facility_address: "Civil Hospital Road, Wardha, Maharashtra 442001",
+  },
+  "Cardiology": {
+    name: "Dr. Vikram Gupta (DM, MD)",
+    speciality: "Cardiology",
+    facility: "City Super-Specialty Heart Care Hub",
+    facility_address: "Railway Station Road, Wardha 442001",
+  },
+  "Cardiology / Emergency": {
+    name: "Dr. Vikram Gupta (DM, MD)",
+    speciality: "Cardiology / Emergency",
+    facility: "City Super-Specialty Heart Care Hub",
+    facility_address: "Railway Station Road, Wardha 442001",
+  },
+  "Dermatology": {
+    name: "Dr. Ananya Patel (MD, DNB)",
+    speciality: "Dermatology",
+    facility: "Wardha Community Dermatology & Telehealth Centre",
+    facility_address: "Subhash Road, Market Yard Complex, Wardha 442001",
+  },
+  "Pediatrics": {
+    name: "Dr. Priya Reddy (MD Pediatrics)",
+    speciality: "Pediatrics",
+    facility: "District Maternal & Child Health Hospital",
+    facility_address: "Near Gandhi Memorial Ground, Wardha 442001",
+  },
+  "Orthopedics": {
+    name: "Dr. Rajesh Verma (MS Orthopedics)",
+    speciality: "Orthopedics",
+    facility: "Rural Telemedicine Post & Joint Care Unit",
+    facility_address: "Panchayat Samiti Complex, Deoli Road, Wardha 442101",
+  },
+  "Gynecology": {
+    name: "Dr. Sunita Deshmukh (MD, DGO)",
+    speciality: "Gynecology",
+    facility: "Sub-District Community Maternity Centre",
+    facility_address: "Main Road, Hinganghat, Wardha 442301",
+  },
+};
+
 export const useIntakeStore = create<IntakeState>((set, get) => ({
   abhaId: "",
   patientName: "",
@@ -290,7 +335,7 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
       return { success: false, offline: false };
     }
 
-    const patientName = state.patientName.trim() || "Aman";
+    const patientName = state.patientName.trim() || `Patient (${state.abhaId.trim()})`;
     const payload: IntakePayload = {
       abha_id: state.abhaId.trim(),
       patient_name: patientName,
@@ -301,6 +346,9 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     };
 
     set({ isSubmitting: true, error: null });
+
+    const dept = state.triagePriority === "High" ? "Cardiology / Emergency" : "General Medicine";
+    const spec = SPECIALISTS_FOR_INTAKE[dept] || SPECIALISTS_FOR_INTAKE["General Medicine"];
 
     const newLocalRecord: SubmittedIntakeRecord = {
       id: `case-${Date.now()}`,
@@ -313,20 +361,36 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
       ai_recommendation: state.aiRecommendation || "Evaluated by Gemini Clinical Engine",
       timestamp: "Just now",
       synced: navigator.onLine,
-      department: state.triagePriority === "High" ? "Cardiology / Emergency" : "General Medicine",
+      department: dept,
+      assigned_doctor: spec.name,
+      doctor_speciality: spec.speciality,
+      facility: spec.facility,
+      facility_address: spec.facility_address,
+      scheduled_date: "Today",
+      scheduled_time: "10:00 AM",
+      appointment_status: "scheduled",
     };
 
     // Helper to store in list
-    const saveToQueue = (synced: boolean, officialId?: string) => {
+    const saveToQueue = (synced: boolean, officialId?: string, serverData?: any) => {
       const recordId = officialId || newLocalRecord.id;
       const record: SubmittedIntakeRecord = {
         ...newLocalRecord,
+        ...(serverData || {}),
         id: recordId,
         case_id: recordId,
         synced,
         status: "waiting",
+        patient_name: serverData?.patient_name || newLocalRecord.patient_name,
+        assigned_doctor: serverData?.assigned_doctor || newLocalRecord.assigned_doctor || spec.name,
+        doctor_speciality: serverData?.doctor_speciality || newLocalRecord.doctor_speciality || spec.speciality,
+        facility: serverData?.facility || newLocalRecord.facility || spec.facility,
+        facility_address: serverData?.facility_address || newLocalRecord.facility_address || spec.facility_address,
+        scheduled_date: serverData?.scheduled_date || newLocalRecord.scheduled_date || "Today",
+        scheduled_time: serverData?.scheduled_time || newLocalRecord.scheduled_time || "10:00 AM",
+        appointment_status: "scheduled",
       };
-      const updated = [record, ...get().submittedIntakes.filter((i) => i.id !== record.id)];
+      const updated = [record, ...get().submittedIntakes.filter((i) => i.id !== record.id && i.case_id !== record.id)];
       try {
         localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));
       } catch (e) {
@@ -355,13 +419,29 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     }
 
     try {
-      const response = await api.post<IntakeResponse>("/api/intake/", payload);
-      const data = response.data;
-      if (typeof data === "string" || !data || !(data.case_id || data.id)) {
-        throw new Error("Server returned non-JSON response, saving to local clinical queue");
+      let response: any;
+      try {
+        response = await api.post<any>("/api/intake/", payload);
+      } catch (postErr: any) {
+        if (postErr.response?.status === 404 || !postErr.response) {
+          response = await api.post<any>("/api/intake", payload);
+        } else {
+          throw postErr;
+        }
       }
-      const officialCaseId = String(data.case_id || data.id || "");
-      saveToQueue(true, officialCaseId || undefined);
+
+      const data = response?.data;
+      const officialCaseId = String(
+        data?.case_id ||
+        data?.id ||
+        data?.data?.case_id ||
+        data?.data?.id ||
+        data?.data?.database_record?.[0]?.id ||
+        ""
+      );
+      const serverDetails = data?.data?.database_record?.[0] || data?.data || data;
+
+      saveToQueue(true, officialCaseId || undefined, serverDetails);
       set({
         isSubmitting: false,
         lastSubmissionResult: data,
@@ -404,10 +484,23 @@ export const useIntakeStore = create<IntakeState>((set, get) => ({
     };
 
     try {
-      const res = await api.post<IntakeResponse>("/api/intake/", payload);
-      const officialCaseId = String((res.data as any)?.case_id || (res.data as any)?.id || item.id);
+      let res: any;
+      try {
+        res = await api.post<any>("/api/intake/", payload);
+      } catch {
+        res = await api.post<any>("/api/intake", payload);
+      }
+      const data = res?.data;
+      const officialCaseId = String(
+        data?.case_id ||
+        data?.id ||
+        data?.data?.case_id ||
+        data?.data?.id ||
+        data?.data?.database_record?.[0]?.id ||
+        item.id
+      );
       const updated = get().submittedIntakes.map((i) =>
-        i.id === id ? { ...i, synced: true, case_id: officialCaseId } : i
+        i.id === id || i.case_id === id ? { ...i, synced: true, case_id: officialCaseId, id: officialCaseId } : i
       );
       try {
         localStorage.setItem("sahara_submitted_intakes", JSON.stringify(updated));

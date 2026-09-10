@@ -328,26 +328,6 @@ export const VoiceIntakeForm: React.FC<VoiceIntakeFormProps> = ({
             <User className="w-3.5 h-3.5 text-teal-600" />
             <span>{language === "English" ? "Patient Demographic & ABHA Identity" : "मरीज विवरण एवं आभा पहचान"}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setPatientName("Savita Patil (TEST)");
-              setAbhaId("TEST-PATIENT-MH-0002");
-            }}
-            style={{
-              fontSize: "0.78rem",
-              background: "#e6fffa",
-              color: "#0d9488",
-              border: "1px solid #99f6e4",
-              borderRadius: "6px",
-              padding: "3px 8px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-            title="Click to load Savita Patil (TEST) - TEST-PATIENT-MH-0002"
-          >
-            ⚡ Test Patient (Savita Patil)
-          </button>
         </div>
         <div className="form-two-col">
           <div className="clean-input-group">

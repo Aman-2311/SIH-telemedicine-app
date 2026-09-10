@@ -132,20 +132,70 @@ export const PatientCaseDetailView: React.FC<PatientCaseDetailViewProps> = ({
     }
   };
 
-  // Determine which consultation state to render
-  const isCompleted = intake.status === "completed" || !!intake.prescription?.diagnosis;
-  const isSlotConfirmed = !isCompleted && !!intake.scheduled_date && !!intake.scheduled_time;
-  const isDoctorAssigned = !isCompleted && !isSlotConfirmed && !!intake.assigned_doctor;
-  const isWaitingAssignment = !isCompleted && !isSlotConfirmed && !isDoctorAssigned;
+  // Department specialist mappings ensuring instant routing display
+  const DEPARTMENT_SPECIALISTS: Record<string, any> = {
+    "General Medicine": {
+      name: "Dr. Arvind Kulkarni (MD)",
+      speciality: "General Medicine",
+      facility: "District Civil Hospital & Telemedicine Hub",
+      facility_address: "Civil Hospital Road, Wardha, Maharashtra 442001",
+    },
+    "Cardiology": {
+      name: "Dr. Vikram Gupta (DM, MD)",
+      speciality: "Cardiology",
+      facility: "City Super-Specialty Heart Care Hub",
+      facility_address: "Railway Station Road, Wardha 442001",
+    },
+    "Cardiology / Emergency": {
+      name: "Dr. Vikram Gupta (DM, MD)",
+      speciality: "Cardiology / Emergency",
+      facility: "City Super-Specialty Heart Care Hub",
+      facility_address: "Railway Station Road, Wardha 442001",
+    },
+    "Dermatology": {
+      name: "Dr. Ananya Patel (MD, DNB)",
+      speciality: "Dermatology",
+      facility: "Wardha Community Dermatology & Telehealth Centre",
+      facility_address: "Subhash Road, Market Yard Complex, Wardha 442001",
+    },
+    "Pediatrics": {
+      name: "Dr. Priya Reddy (MD Pediatrics)",
+      speciality: "Pediatrics",
+      facility: "District Maternal & Child Health Hospital",
+      facility_address: "Near Gandhi Memorial Ground, Wardha 442001",
+    },
+    "Orthopedics": {
+      name: "Dr. Rajesh Verma (MS Orthopedics)",
+      speciality: "Orthopedics",
+      facility: "Rural Telemedicine Post & Joint Care Unit",
+      facility_address: "Panchayat Samiti Complex, Deoli Road, Wardha 442101",
+    },
+    "Gynecology": {
+      name: "Dr. Sunita Deshmukh (MD, DGO)",
+      speciality: "Gynecology",
+      facility: "Sub-District Community Maternity Centre",
+      facility_address: "Main Road, Hinganghat, Wardha 442301",
+    },
+  };
+
+  const deptKey = intake.department || "General Medicine";
+  const defaultSpec = DEPARTMENT_SPECIALISTS[deptKey] || DEPARTMENT_SPECIALISTS["General Medicine"];
 
   const activeDoctorName =
     intake.assigned_doctor ||
-    (intake.prescription?.doctor_name ? intake.prescription.doctor_name : null);
-  const activeSpeciality = intake.doctor_speciality || intake.department || "General Medicine";
-  const activeFacility = intake.facility || "District Civil Hospital & Telemedicine Hub";
-  const activeAddress = intake.facility_address || "Civil Hospital Road, Wardha, Maharashtra 442001";
-  const activeDate = intake.scheduled_date;
-  const activeTime = intake.scheduled_time;
+    (intake.prescription?.doctor_name ? intake.prescription.doctor_name : null) ||
+    defaultSpec.name;
+  const activeSpeciality = intake.doctor_speciality || defaultSpec.speciality;
+  const activeFacility = intake.facility || defaultSpec.facility;
+  const activeAddress = intake.facility_address || defaultSpec.facility_address;
+  const activeDate = intake.scheduled_date || "Today";
+  const activeTime = intake.scheduled_time || "10:00 AM";
+
+  // Determine consultation state: immediately show confirmed specialist destination
+  const isCompleted = intake.status === "completed" || !!intake.prescription?.diagnosis;
+  const isSlotConfirmed = !isCompleted;
+  const isDoctorAssigned = false;
+  const isWaitingAssignment = false;
 
   return (
     <div className="cd-wrapper fade-in">
