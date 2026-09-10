@@ -122,7 +122,12 @@ export const useDoctorQueueStore = create<DoctorQueueState>((set, get) => ({
         });
       }
     } catch (err: any) {
-      console.warn("Server queue unavailable, falling back to local sync", err?.message);
+      console.error("API Error fetching doctor queue:", err?.message);
+      set({ 
+        error: "Failed to connect to backend server. Please verify the API is running.",
+        isLoadingQueue: false 
+      });
+      return; // Do not silently fall back to localItems when API fails
     }
 
     // 2. Load locally submitted intakes (from ASHA tablet or offline queue)

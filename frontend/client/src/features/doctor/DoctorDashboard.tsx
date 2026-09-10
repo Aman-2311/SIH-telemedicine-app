@@ -803,13 +803,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       onClick={() => setActiveView("queue")}
                       className="text-sm font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer shrink-0"
                     >
-                      View All →
+                      View All ({displayedQueue.length}) →
                     </button>
                   </div>
 
                   {/* Priority Patient Cards - Spacious 2-Tier Layout */}
                   <div className="space-y-4">
-                    {displayedQueue.slice(0, 4).map((item) => {
+                    {displayedQueue.map((item) => {
                       const isUrgent = ["urgent", "high"].includes(
                         (item.triage_priority || "").toLowerCase()
                       );
